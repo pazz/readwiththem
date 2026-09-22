@@ -283,20 +283,14 @@ img.cover-lg {
 }
 
 .book-entry-modes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.mode-primary-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
 }
 
 .mode-primary {
-  flex: 1;
-  font-size: 1.05rem;
-  padding: 1.1rem 0.6rem;
+  font-size: 1rem;
+  padding: 1.1rem 0.5rem;
   background: var(--color-primary);
   color: var(--color-primary-contrast);
   border: none;
@@ -314,17 +308,6 @@ img.cover-lg {
 
 .mode-primary span {
   font-size: 1.3rem;
-}
-
-.mode-secondary-row {
-  display: flex;
-  gap: 0.6rem;
-}
-
-.mode-secondary-row button {
-  flex: 1;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
 }
 
 .scanner {

@@ -408,18 +408,18 @@ function LogReadingView({
             </div>
           ) : mode === 'none' ? (
             <div className="book-entry-modes">
-              <div className="mode-primary-row">
-                <button type="button" className="mode-primary" onClick={() => setMode('recents')}>
-                  <span aria-hidden="true">🔁</span> Recents
-                </button>
-                <button type="button" className="mode-primary" onClick={() => setMode('scan')}>
-                  <span aria-hidden="true">📖</span> Scan barcode
-                </button>
-              </div>
-              <div className="mode-secondary-row">
-                <button type="button" onClick={() => setMode('manual')}>Add manually</button>
-                <button type="button" onClick={() => setMode('search')}>Search</button>
-              </div>
+              <button type="button" className="mode-primary" onClick={() => setMode('recents')}>
+                <span aria-hidden="true">🔁</span> Recents
+              </button>
+              <button type="button" className="mode-primary" onClick={() => setMode('scan')}>
+                <span aria-hidden="true">📖</span> Scan barcode
+              </button>
+              <button type="button" className="mode-primary" onClick={() => setMode('search')}>
+                <span aria-hidden="true">🔍</span> Search
+              </button>
+              <button type="button" className="mode-primary" onClick={() => setMode('manual')}>
+                <span aria-hidden="true">✏️</span> Add manually
+              </button>
             </div>
           ) : mode === 'scan' ? (
             <BarcodeScanner onDetect={handleScanned} onClose={() => setMode('none')} />
