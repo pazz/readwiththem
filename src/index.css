@@ -1,70 +1,218 @@
 :root {
-  font-family: system-ui, sans-serif;
+  --color-bg: #f6f3ec;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f0ece2;
+  --color-border: #e3ddd0;
+  --color-text: #1c1c1a;
+  --color-text-muted: #63625b;
+  --color-primary: #2c5f4f;
+  --color-primary-hover: #234c40;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: #e4ede9;
+  --color-danger: #a8422c;
+  --color-star: #d99a00;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(20, 20, 15, 0.06), 0 1px 1px rgba(20, 20, 15, 0.04);
+  --shadow-md: 0 4px 16px rgba(20, 20, 15, 0.08), 0 1px 3px rgba(20, 20, 15, 0.06);
+  --nav-height: 64px;
   color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14161a;
+    --color-surface: #1f2226;
+    --color-surface-alt: #262a2f;
+    --color-border: #34383e;
+    --color-text: #f0efe9;
+    --color-text-muted: #a3a299;
+    --color-primary: #57a98c;
+    --color-primary-hover: #6cbb9f;
+    --color-primary-contrast: #0c130f;
+    --color-primary-soft: #22322c;
+    --color-danger: #d97a63;
+    --color-star: #e8b647;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 body {
   margin: 0;
-  background: #fdfaf5;
-  color: #1a1a1a;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .app {
   max-width: 480px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.1rem 1rem calc(var(--nav-height) + 1.5rem);
+  min-height: 100vh;
 }
 
+h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
+}
+
+h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+}
+
+/* Bottom tab bar — the standard mobile/PWA navigation pattern: thumb-reachable,
+   frees vertical space, and reads as "app chrome" rather than a row of form
+   buttons competing with the page's own buttons. */
 nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 nav button {
   flex: 1;
-  padding: 0.6rem;
-  border: 1px solid #2c5f4f;
-  background: white;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: var(--nav-height);
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.4rem;
+}
+
+nav .nav-icon {
+  font-size: 1.3rem;
+  line-height: 1;
 }
 
 nav button[aria-current='true'] {
-  background: #2c5f4f;
-  color: white;
+  color: var(--color-primary);
 }
 
 input, select, textarea, button {
   font-size: 1rem;
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  font-family: inherit;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+input, select, textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+button {
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin-bottom: 1.5rem;
+  gap: 0.9rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.card + .card {
+  margin-top: 0.9rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.35rem;
 }
 
 .submit-btn {
-  background: #2c5f4f;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
   border: none;
+  padding: 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+}
+
+.submit-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-primary);
 }
 
 .search-result {
   display: flex;
   gap: 0.6rem;
   align-items: center;
-  padding: 0.5rem;
-  border: 1px solid #eee;
-  border-radius: 6px;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   margin-bottom: 0.4rem;
   cursor: pointer;
-  background: white;
+  background: var(--color-surface);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.search-result:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
 }
 
 .cover-sm {
@@ -87,7 +235,8 @@ img.cover-lg {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eee;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
   border-radius: 4px;
   padding: 4px;
   font-size: 0.65rem;
@@ -99,19 +248,23 @@ img.cover-lg {
 .child-list {
   list-style: none;
   padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .child-list button {
   width: 100%;
   text-align: left;
-  background: white;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 0.7rem 0.8rem;
 }
 
 .child-list button.child-active {
-  border-color: #2c5f4f;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
   font-weight: 600;
 }
 
@@ -119,28 +272,38 @@ img.cover-lg {
   border: none;
   padding: 0;
   background: none;
-  color: #2c5f4f;
+  color: var(--color-primary);
   text-decoration: underline;
   font-size: inherit;
+  font-weight: 500;
+}
+
+.link-btn.danger {
+  color: var(--color-danger);
 }
 
 .book-entry-modes {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .mode-scan {
-  font-size: 1.15rem;
-  padding: 1rem;
-  background: #2c5f4f;
-  color: white;
+  font-size: 1.1rem;
+  padding: 1.1rem;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-scan:hover {
+  background: var(--color-primary-hover);
 }
 
 .mode-scan span {
@@ -149,25 +312,26 @@ img.cover-lg {
 
 .mode-secondary-row {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .mode-secondary-row button {
   flex: 1;
-  background: white;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .scanner {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .scanner-video {
   width: 100%;
   max-height: 320px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: black;
 }
 
@@ -178,8 +342,8 @@ img.cover-lg {
 .poster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 0.7rem;
-  margin-top: 0.6rem;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
 }
 
 .poster-item {
@@ -188,7 +352,12 @@ img.cover-lg {
   align-items: center;
   text-align: center;
   font-size: 0.75rem;
-  gap: 0.2rem;
+  gap: 0.3rem;
+}
+
+.poster-item img.cover-lg,
+.poster-item .cover-placeholder.cover-lg {
+  box-shadow: var(--shadow-sm);
 }
 
 .poster-cover-wrap {
@@ -197,14 +366,15 @@ img.cover-lg {
 
 .poster-count-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  background: #2c5f4f;
-  color: white;
+  top: -6px;
+  right: -6px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
   border-radius: 999px;
   font-size: 0.65rem;
-  padding: 1px 5px;
-  line-height: 1.3;
+  padding: 1px 6px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-sm);
 }
 
 @media print {
@@ -228,8 +398,21 @@ img.cover-lg {
 }
 
 .session-row {
-  border-bottom: 1px solid #eee;
-  padding: 0.5rem 0;
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.session-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0.2rem;
+}
+
+.session-row-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .session-row-header {
@@ -242,8 +425,8 @@ img.cover-lg {
 .recent-books {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  margin-bottom: 0.6rem;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
 }
 
 .recent-books-row {
@@ -257,13 +440,19 @@ img.cover-lg {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  background: white;
+  gap: 0.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   width: 70px;
   font-size: 0.7rem;
   text-align: center;
-  padding: 0.3rem;
+  padding: 0.4rem;
+}
+
+.recent-book:hover {
+  border-color: var(--color-primary);
 }
 
 .recent-book span {
@@ -275,23 +464,36 @@ img.cover-lg {
 
 .star-rating {
   display: flex;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 
 .star {
   background: none;
   border: none;
-  padding: 0.1rem;
-  font-size: 1.6rem;
+  padding: 0.15rem;
+  font-size: 1.7rem;
   line-height: 1;
-  color: #ccc;
+  color: var(--color-border);
+  transition: color 0.1s ease, transform 0.1s ease;
 }
 
 .star.filled {
-  color: #e0a300;
+  color: var(--color-star);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: 0.6rem;
 }
 
 .muted {
-  color: #777;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }

@@ -84,10 +84,22 @@ export default function App() {
     <div className="app">
       <h1>Read With Them</h1>
       <nav>
-        <button aria-current={tab === 'children'} onClick={() => setTab('children')}>Children</button>
-        <button aria-current={tab === 'log'} onClick={() => setTab('log')}>Log a reading</button>
-        <button aria-current={tab === 'history'} onClick={() => setTab('history')}>History</button>
-        <button aria-current={tab === 'export'} onClick={() => setTab('export')}>Export</button>
+        <button aria-current={tab === 'children'} onClick={() => setTab('children')}>
+          <span className="nav-icon" aria-hidden="true">👶</span>
+          Children
+        </button>
+        <button aria-current={tab === 'log'} onClick={() => setTab('log')}>
+          <span className="nav-icon" aria-hidden="true">📖</span>
+          Log
+        </button>
+        <button aria-current={tab === 'history'} onClick={() => setTab('history')}>
+          <span className="nav-icon" aria-hidden="true">🕘</span>
+          History
+        </button>
+        <button aria-current={tab === 'export'} onClick={() => setTab('export')}>
+          <span className="nav-icon" aria-hidden="true">📤</span>
+          Export
+        </button>
       </nav>
 
       {tab === 'children' && (
@@ -158,24 +170,35 @@ function ChildrenView({
 
   return (
     <div>
-      <form onSubmit={submit}>
-        <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} />
-        <input placeholder="Birth year (optional)" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} type="number" />
-        <button className="submit-btn" type="submit">Add child</button>
-        {error && <p className="muted">Could not save: {error}</p>}
-      </form>
-      {children.length === 0 && <p className="muted">Add a child above to get started.</p>}
-      <ul className="child-list">
-        {children.map((c) => (
-          <li key={c.id}>
-            <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
-              {c.id === activeChildId ? '✓ ' : ''}
-              {c.name}
-              {c.birthYear ? ` (b. ${c.birthYear})` : ''}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="card">
+        <form onSubmit={submit}>
+          <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input placeholder="Birth year (optional)" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} type="number" />
+          <button className="submit-btn" type="submit">Add child</button>
+          {error && <p className="muted">Could not save: {error}</p>}
+        </form>
+      </div>
+
+      {children.length === 0 ? (
+        <div className="card empty-state">
+          <span className="empty-icon" aria-hidden="true">🧒</span>
+          Add a child above to get started.
+        </div>
+      ) : (
+        <div className="card">
+          <ul className="child-list">
+            {children.map((c) => (
+              <li key={c.id}>
+                <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
+                  {c.id === activeChildId ? '✓ ' : ''}
+                  {c.name}
+                  {c.birthYear ? ` (b. ${c.birthYear})` : ''}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -295,7 +318,8 @@ function LogReadingView({
 
   if (!activeChild) {
     return (
-      <div>
+      <div className="card empty-state">
+        <span className="empty-icon" aria-hidden="true">📖</span>
         <p className="muted">No child selected yet.</p>
         <button className="submit-btn" onClick={onSwitchToChildren}>Choose or add a child</button>
       </div>
@@ -304,14 +328,14 @@ function LogReadingView({
 
   return (
     <div>
-      <form onSubmit={submit}>
+      <form className="card" onSubmit={submit}>
         <p className="muted">
           Logging for <strong>{activeChild.name}</strong> ·{' '}
           <button type="button" className="link-btn" onClick={onSwitchToChildren}>switch child</button>
         </p>
 
         <div>
-          Book
+          <span className="field-label">Book</span>
           {selected ? (
             <div className="search-result">
               <BookCover src={selected.coverUrl} title={selected.title} size="sm" />
@@ -381,12 +405,12 @@ function LogReadingView({
         </div>
 
         <label>
-          Date
+          <span className="field-label">Date</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
 
         <div>
-          Rating (optional)
+          <span className="field-label">Rating (optional)</span>
           <StarRating value={rating} onChange={setRating} />
         </div>
 
@@ -413,34 +437,45 @@ function HistoryView({
   const childById = new Map(children.map((c) => [c.id, c]))
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
-  if (sessions.length === 0) return <p className="muted">No readings logged yet.</p>
+  if (sessions.length === 0) {
+    return (
+      <div className="card empty-state">
+        <span className="empty-icon" aria-hidden="true">🕘</span>
+        No readings logged yet.
+      </div>
+    )
+  }
 
   return (
-    <div>
+    <div className="card">
       {sessions.map((s) => {
         const edition = editionById.get(s.editionId)
+        const title = edition?.title ?? 'Unknown book'
         return (
           <div key={s.id} className="session-row">
-            <div className="session-row-header">
-              <div>
-                <strong>{edition?.title ?? 'Unknown book'}</strong>
-                {edition?.author && <span className="muted"> by {edition.author}</span>}
+            <BookCover src={edition?.coverUrl} title={title} size="sm" />
+            <div className="session-row-body">
+              <div className="session-row-header">
+                <div>
+                  <strong>{title}</strong>
+                  {edition?.author && <span className="muted"> by {edition.author}</span>}
+                </div>
+                <button
+                  type="button"
+                  className="link-btn danger"
+                  onClick={() => {
+                    if (confirm(`Remove this reading of "${title}"?`)) onDelete(s.id)
+                  }}
+                >
+                  Remove
+                </button>
               </div>
-              <button
-                type="button"
-                className="link-btn"
-                onClick={() => {
-                  if (confirm(`Remove this reading of "${edition?.title ?? 'this book'}"?`)) onDelete(s.id)
-                }}
-              >
-                Remove
-              </button>
+              <div className="muted">
+                {s.date} · {childById.get(s.childId)?.name ?? 'Unknown child'}
+                {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
+              </div>
+              {s.note && <div>{s.note}</div>}
             </div>
-            <div className="muted">
-              {s.date} · {childById.get(s.childId)?.name ?? 'Unknown child'}
-              {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
-            </div>
-            {s.note && <div>{s.note}</div>}
           </div>
         )
       })}
@@ -553,85 +588,94 @@ function ExportView({
 
   return (
     <div>
-      <p className="muted">Export is your backup — this prototype keeps data only in this browser.</p>
-      <button onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}>
-        Download full JSON backup
-      </button>
-
-      <h3>Reading history CSV</h3>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
-        <select value={csvChildId} onChange={(e) => setCsvChildId(e.target.value)}>
-          <option value="">All children</option>
-          {children.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <input type="date" value={csvFrom} onChange={(e) => setCsvFrom(e.target.value)} aria-label="From date" />
-        <input type="date" value={csvTo} onChange={(e) => setCsvTo(e.target.value)} aria-label="To date" />
-      </div>
-      <button onClick={() => download('readwiththem-sessions.csv', storage.sessionsToCSV(filteredForCSV, children, editions), 'text/csv')}>
-        Download CSV ({filteredForCSV.length} reading{filteredForCSV.length === 1 ? '' : 's'})
-      </button>
-
-      <h3>Poster / list</h3>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
-        <select value={posterChildId} onChange={(e) => setPosterChildId(e.target.value)}>
-          <option value="">Select child</option>
-          {children.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <input type="date" value={posterFrom} onChange={(e) => setPosterFrom(e.target.value)} aria-label="From date" />
-        <input type="date" value={posterTo} onChange={(e) => setPosterTo(e.target.value)} aria-label="To date" />
-      </div>
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-        <button
-          type="button"
-          onClick={() => {
-            setPosterFrom(toISODate(startOfWeek(new Date())))
-            setPosterTo(toISODate(endOfWeek(new Date())))
-          }}
-        >
-          This week
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setPosterFrom(toISODate(startOfMonth(new Date())))
-            setPosterTo(toISODate(endOfMonth(new Date())))
-          }}
-        >
-          This month
+      <div className="card">
+        <h3>Backup</h3>
+        <p className="muted">Export is your backup — this prototype keeps data only in this browser.</p>
+        <button className="btn-secondary" onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}>
+          Download full JSON backup
         </button>
       </div>
 
-      {posterChild && (
-        <>
-          <button onClick={() => window.print()}>Print poster / save as PDF</button>
-          <div id="poster-print-area" className="poster">
-            <h2>{posterChild.name}'s books — {formatDateRangeLabel(posterFrom, posterTo)}</h2>
-            {posterBooks.length === 0 ? (
-              <p className="muted">No readings logged for this period yet.</p>
-            ) : (
-              <div className="poster-grid">
-                {posterBooks.map(({ editionId, count }) => {
-                  const edition = editionById.get(editionId)
-                  const title = edition?.title ?? 'Unknown book'
-                  return (
-                    <div key={editionId} className="poster-item">
-                      <div className="poster-cover-wrap">
-                        <BookCover src={edition?.coverUrl} title={title} size="lg" />
-                        {count > 1 && <span className="poster-count-badge">×{count}</span>}
+      <div className="card">
+        <h3>Reading history CSV</h3>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+          <select value={csvChildId} onChange={(e) => setCsvChildId(e.target.value)}>
+            <option value="">All children</option>
+            {children.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <input type="date" value={csvFrom} onChange={(e) => setCsvFrom(e.target.value)} aria-label="From date" />
+          <input type="date" value={csvTo} onChange={(e) => setCsvTo(e.target.value)} aria-label="To date" />
+        </div>
+        <button className="btn-secondary" onClick={() => download('readwiththem-sessions.csv', storage.sessionsToCSV(filteredForCSV, children, editions), 'text/csv')}>
+          Download CSV ({filteredForCSV.length} reading{filteredForCSV.length === 1 ? '' : 's'})
+        </button>
+      </div>
+
+      <div className="card">
+        <h3>Poster / list</h3>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+          <select value={posterChildId} onChange={(e) => setPosterChildId(e.target.value)}>
+            <option value="">Select child</option>
+            {children.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <input type="date" value={posterFrom} onChange={(e) => setPosterFrom(e.target.value)} aria-label="From date" />
+          <input type="date" value={posterTo} onChange={(e) => setPosterTo(e.target.value)} aria-label="To date" />
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setPosterFrom(toISODate(startOfWeek(new Date())))
+              setPosterTo(toISODate(endOfWeek(new Date())))
+            }}
+          >
+            This week
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setPosterFrom(toISODate(startOfMonth(new Date())))
+              setPosterTo(toISODate(endOfMonth(new Date())))
+            }}
+          >
+            This month
+          </button>
+        </div>
+
+        {posterChild && (
+          <>
+            <button className="submit-btn" onClick={() => window.print()}>Print poster / save as PDF</button>
+            <div id="poster-print-area" className="poster">
+              <h2>{posterChild.name}'s books — {formatDateRangeLabel(posterFrom, posterTo)}</h2>
+              {posterBooks.length === 0 ? (
+                <p className="muted">No readings logged for this period yet.</p>
+              ) : (
+                <div className="poster-grid">
+                  {posterBooks.map(({ editionId, count }) => {
+                    const edition = editionById.get(editionId)
+                    const title = edition?.title ?? 'Unknown book'
+                    return (
+                      <div key={editionId} className="poster-item">
+                        <div className="poster-cover-wrap">
+                          <BookCover src={edition?.coverUrl} title={title} size="lg" />
+                          {count > 1 && <span className="poster-count-badge">×{count}</span>}
+                        </div>
+                        <span>{title}</span>
                       </div>
-                      <span>{title}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
