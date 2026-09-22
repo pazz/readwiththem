@@ -4,9 +4,9 @@ import * as storage from './storage'
 import { searchCatalogue, lookupISBN, type BookSearchResult } from './catalogue'
 import { BarcodeScanner } from './BarcodeScanner'
 
-function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
+function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' | 'tile' }) {
   const [failed, setFailed] = useState(false)
-  const sizeClass = size === 'sm' ? 'cover-sm' : 'cover-lg'
+  const sizeClass = size === 'sm' ? 'cover-sm' : size === 'lg' ? 'cover-lg' : 'cover-tile'
   if (!src || failed) {
     return (
       <div className={`cover-placeholder ${sizeClass}`} role="img" aria-label={title}>
@@ -566,6 +566,7 @@ function ExportView({
   const [posterChildId, setPosterChildId] = useState(activeChildId)
   const [posterFrom, setPosterFrom] = useState(() => toISODate(startOfMonth(new Date())))
   const [posterTo, setPosterTo] = useState(() => toISODate(endOfMonth(new Date())))
+  const [exportStyle, setExportStyle] = useState<'list' | 'poster'>('list')
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
@@ -658,29 +659,58 @@ function ExportView({
 
         {posterChild && (
           <>
-            <button className="submit-btn" onClick={() => window.print()}>Print poster / save as PDF</button>
-            <div id="poster-print-area" className="poster">
-              <h2>{posterChild.name}'s books — {formatDateRangeLabel(posterFrom, posterTo)}</h2>
-              {posterBooks.length === 0 ? (
-                <p className="muted">No readings logged for this period yet.</p>
-              ) : (
-                <div className="poster-grid">
-                  {posterBooks.map(({ editionId, count }) => {
-                    const edition = editionById.get(editionId)
-                    const title = edition?.title ?? 'Unknown book'
-                    return (
-                      <div key={editionId} className="poster-item">
-                        <div className="poster-cover-wrap">
-                          <BookCover src={edition?.coverUrl} title={title} size="lg" />
-                          {count > 1 && <span className="poster-count-badge">×{count}</span>}
-                        </div>
-                        <span>{title}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+            <div className="segmented">
+              <button type="button" className={exportStyle === 'list' ? 'active' : ''} onClick={() => setExportStyle('list')}>
+                Pretty list
+              </button>
+              <button type="button" className={exportStyle === 'poster' ? 'active' : ''} onClick={() => setExportStyle('poster')}>
+                Poster
+              </button>
             </div>
+
+            <button className="submit-btn" onClick={() => window.print()}>
+              Print {exportStyle} / save as PDF
+            </button>
+
+            {exportStyle === 'list' ? (
+              <div id="poster-print-area" className="print-page list-mode">
+                <h2>{posterChild.name}'s books — {formatDateRangeLabel(posterFrom, posterTo)}</h2>
+                {posterBooks.length === 0 ? (
+                  <p className="muted">No readings logged for this period yet.</p>
+                ) : (
+                  <ul className="export-list">
+                    {posterBooks.map(({ editionId, count }) => {
+                      const edition = editionById.get(editionId)
+                      const title = edition?.title ?? 'Unknown book'
+                      return (
+                        <li key={editionId} className="export-list-row">
+                          <BookCover src={edition?.coverUrl} title={title} size="sm" />
+                          <div className="export-list-text">
+                            <strong>{title}</strong>
+                            {edition?.author && <span className="muted"> — {edition.author}</span>}
+                          </div>
+                          {count > 1 && <span className="muted">×{count}</span>}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <div id="poster-print-area" className="print-page poster-mode">
+                {posterSessionsInRange.length === 0 ? (
+                  <p className="muted">No readings logged for this period yet.</p>
+                ) : (
+                  <div className="poster-mosaic">
+                    {posterSessionsInRange.map((s) => {
+                      const edition = editionById.get(s.editionId)
+                      return <BookCover key={s.id} src={edition?.coverUrl} title={edition?.title ?? 'Unknown book'} size="tile" />
+                    })}
+                    <span className="poster-date-badge">{formatDateRangeLabel(posterFrom, posterTo)}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

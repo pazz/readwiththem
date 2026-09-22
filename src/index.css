@@ -225,10 +225,20 @@ form {
   height: 126px;
 }
 
+.cover-tile {
+  width: 100%;
+  height: 100%;
+}
+
 img.cover-sm,
 img.cover-lg {
   object-fit: cover;
   border-radius: 4px;
+}
+
+img.cover-tile {
+  object-fit: cover;
+  display: block;
 }
 
 .cover-placeholder {
@@ -341,52 +351,101 @@ img.cover-lg {
   background: black;
 }
 
-.poster {
-  margin-top: 0.6rem;
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 0.6rem;
 }
 
-.poster-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 0.8rem;
-  margin-top: 0.8rem;
+.segmented button {
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
 }
 
-.poster-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  font-size: 0.75rem;
-  gap: 0.3rem;
+.segmented button.active {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
 }
 
-.poster-item img.cover-lg,
-.poster-item .cover-placeholder.cover-lg {
-  box-shadow: var(--shadow-sm);
+/* .print-page represents actual paper: always white/dark-text regardless of the
+   app's own light/dark theme, since that's what will physically print. */
+.print-page {
+  margin-top: 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #ffffff;
+  color: #1a1a1a;
 }
 
-.poster-cover-wrap {
+.print-page.list-mode {
+  padding: 1rem;
+}
+
+.print-page.poster-mode {
+  aspect-ratio: 210 / 297;
   position: relative;
 }
 
-.poster-count-badge {
+.export-list {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+}
+
+.export-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e2d8;
+}
+
+.export-list-row:last-child {
+  border-bottom: none;
+}
+
+.export-list-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.poster-mosaic {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.poster-date-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--color-primary);
-  color: var(--color-primary-contrast);
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 15, 0.72);
+  color: #fff;
+  padding: 0.4rem 1.1rem;
   border-radius: 999px;
-  font-size: 0.65rem;
-  padding: 1px 6px;
-  line-height: 1.4;
-  box-shadow: var(--shadow-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 @media print {
   @page {
     size: A4;
     margin: 12mm;
+  }
+  @page poster {
+    size: A4;
+    margin: 0;
   }
   body * {
     visibility: hidden;
@@ -400,6 +459,12 @@ img.cover-lg {
     top: 0;
     left: 0;
     width: 100%;
+    border: none;
+  }
+  #poster-print-area.poster-mode {
+    height: 100vh;
+    aspect-ratio: auto;
+    page: poster;
   }
 }
 
