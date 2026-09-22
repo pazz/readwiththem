@@ -17,6 +17,27 @@ function BookCover({ src, title, size }: { src: string | undefined; title: strin
   return <img src={src} alt={title} className={sizeClass} onError={() => setFailed(true)} />
 }
 
+function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const current = Number(value) || 0
+  return (
+    <div className="star-rating" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          role="radio"
+          aria-checked={current === n}
+          aria-label={`${n} star${n === 1 ? '' : 's'}`}
+          className={`star${n <= current ? ' filled' : ''}`}
+          onClick={() => onChange(current === n ? '' : String(n))}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  )
+}
+
 type Tab = 'children' | 'log' | 'history' | 'export'
 
 // Which child is active is a per-device UI convenience, not household data, so it
@@ -81,9 +102,25 @@ export default function App() {
         />
       )}
       {tab === 'log' && (
-        <LogReadingView activeChild={activeChild} editions={editions} onChange={reload} onSwitchToChildren={() => setTab('children')} />
+        <LogReadingView
+          activeChild={activeChild}
+          editions={editions}
+          sessions={sessions}
+          onChange={reload}
+          onSwitchToChildren={() => setTab('children')}
+        />
       )}
-      {tab === 'history' && <HistoryView sessions={sessions} children={children} editions={editions} />}
+      {tab === 'history' && (
+        <HistoryView
+          sessions={sessions}
+          children={children}
+          editions={editions}
+          onDelete={async (id) => {
+            await storage.deleteSession(id)
+            await reload()
+          }}
+        />
+      )}
       {tab === 'export' && <ExportView children={children} editions={editions} sessions={sessions} activeChildId={activeChildId} />}
     </div>
   )
@@ -146,11 +183,13 @@ function ChildrenView({
 function LogReadingView({
   activeChild,
   editions,
+  sessions,
   onChange,
   onSwitchToChildren,
 }: {
   activeChild: Child | undefined
   editions: Edition[]
+  sessions: ReadingSession[]
   onChange: () => void
   onSwitchToChildren: () => void
 }) {
@@ -163,10 +202,21 @@ function LogReadingView({
   const [manualTitle, setManualTitle] = useState('')
   const [manualAuthor, setManualAuthor] = useState('')
   const [manualIsbn, setManualIsbn] = useState('')
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => toISODate(new Date()))
   const [note, setNote] = useState('')
   const [rating, setRating] = useState('')
   const [status, setStatus] = useState('')
+
+  const latestDateByEdition = new Map<string, string>()
+  for (const s of sessions) {
+    const prev = latestDateByEdition.get(s.editionId)
+    if (!prev || s.date > prev) latestDateByEdition.set(s.editionId, s.date)
+  }
+  const recentEditions = Array.from(latestDateByEdition.entries())
+    .sort((a, b) => b[1].localeCompare(a[1]))
+    .slice(0, 8)
+    .map(([editionId]) => editions.find((e) => e.id === editionId))
+    .filter((e): e is Edition => !!e)
 
   const handleScanned = async (isbn: string) => {
     setScanning(false)
@@ -273,6 +323,24 @@ function LogReadingView({
             <BarcodeScanner onDetect={handleScanned} onClose={() => setScanning(false)} />
           ) : (
             <>
+              {recentEditions.length > 0 && (
+                <div className="recent-books">
+                  <span className="muted">Recently read — tap to log again</span>
+                  <div className="recent-books-row">
+                    {recentEditions.map((e) => (
+                      <button
+                        key={e.id}
+                        type="button"
+                        className="recent-book"
+                        onClick={() => setSelected({ title: e.title, author: e.author, isbn: e.isbn, coverUrl: e.coverUrl })}
+                      >
+                        <BookCover src={e.coverUrl} title={e.title} size="sm" />
+                        <span>{e.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <input placeholder="Search title or author" value={query} onChange={(e) => setQuery(e.target.value)} />
                 <button type="button" onClick={runSearch} disabled={searching}>{searching ? 'Searching…' : 'Search'}</button>
@@ -299,13 +367,10 @@ function LogReadingView({
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
 
-        <label>
-          Rating (1–5, optional)
-          <select value={rating} onChange={(e) => setRating(e.target.value)}>
-            <option value="">—</option>
-            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
+        <div>
+          Rating (optional)
+          <StarRating value={rating} onChange={setRating} />
+        </div>
 
         <textarea placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
 
@@ -316,7 +381,17 @@ function LogReadingView({
   )
 }
 
-function HistoryView({ sessions, children, editions }: { sessions: ReadingSession[]; children: Child[]; editions: Edition[] }) {
+function HistoryView({
+  sessions,
+  children,
+  editions,
+  onDelete,
+}: {
+  sessions: ReadingSession[]
+  children: Child[]
+  editions: Edition[]
+  onDelete: (id: string) => void
+}) {
   const childById = new Map(children.map((c) => [c.id, c]))
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
@@ -328,8 +403,21 @@ function HistoryView({ sessions, children, editions }: { sessions: ReadingSessio
         const edition = editionById.get(s.editionId)
         return (
           <div key={s.id} className="session-row">
-            <strong>{edition?.title ?? 'Unknown book'}</strong>
-            {edition?.author && <span className="muted"> by {edition.author}</span>}
+            <div className="session-row-header">
+              <div>
+                <strong>{edition?.title ?? 'Unknown book'}</strong>
+                {edition?.author && <span className="muted"> by {edition.author}</span>}
+              </div>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  if (confirm(`Remove this reading of "${edition?.title ?? 'this book'}"?`)) onDelete(s.id)
+                }}
+              >
+                Remove
+              </button>
+            </div>
             <div className="muted">
               {s.date} · {childById.get(s.childId)?.name ?? 'Unknown child'}
               {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
@@ -352,9 +440,52 @@ function download(filename: string, content: string, mime: string) {
   URL.revokeObjectURL(url)
 }
 
-function formatMonth(yearMonth: string): string {
-  const [year, month] = yearMonth.split('-').map(Number)
-  return new Date(year, month - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+// Deliberately not d.toISOString().slice(0, 10): that converts to UTC first, which
+// silently shifts the date by a day whenever the local timezone offset crosses
+// midnight relative to UTC — exactly the kind of bug that only shows up sometimes.
+function toISODate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function parseISODate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function endOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0)
+}
+
+function startOfWeek(d: Date): Date {
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return monday
+}
+
+function endOfWeek(d: Date): Date {
+  const sunday = startOfWeek(d)
+  sunday.setDate(sunday.getDate() + 6)
+  return sunday
+}
+
+function formatDateRangeLabel(from: string, to: string): string {
+  const fromDate = parseISODate(from)
+  const toDate = parseISODate(to)
+  const isFullMonth =
+    fromDate.getDate() === 1 &&
+    fromDate.getMonth() === toDate.getMonth() &&
+    fromDate.getFullYear() === toDate.getFullYear() &&
+    toISODate(toDate) === toISODate(endOfMonth(fromDate))
+  if (isFullMonth) return fromDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return `${fmt(fromDate)} – ${fmt(toDate)}`
 }
 
 function ExportView({
@@ -372,7 +503,8 @@ function ExportView({
   const [csvFrom, setCsvFrom] = useState('')
   const [csvTo, setCsvTo] = useState('')
   const [posterChildId, setPosterChildId] = useState(activeChildId)
-  const [posterMonth, setPosterMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [posterFrom, setPosterFrom] = useState(() => toISODate(startOfMonth(new Date())))
+  const [posterTo, setPosterTo] = useState(() => toISODate(endOfMonth(new Date())))
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
@@ -384,9 +516,22 @@ function ExportView({
   })
 
   const posterChild = children.find((c) => c.id === posterChildId)
-  const posterSessions = sessions
-    .filter((s) => s.childId === posterChildId && s.date.startsWith(posterMonth))
+  const posterSessionsInRange = sessions
+    .filter((s) => s.childId === posterChildId && s.date >= posterFrom && s.date <= posterTo)
     .sort((a, b) => a.date.localeCompare(b.date))
+
+  // One entry per book, not per reading — a re-read shows a "×N" badge instead of repeating the cover.
+  const posterBooks: Array<{ editionId: string; count: number }> = []
+  const posterBookIndex = new Map<string, number>()
+  for (const s of posterSessionsInRange) {
+    const existingIndex = posterBookIndex.get(s.editionId)
+    if (existingIndex === undefined) {
+      posterBookIndex.set(s.editionId, posterBooks.length)
+      posterBooks.push({ editionId: s.editionId, count: 1 })
+    } else {
+      posterBooks[existingIndex].count += 1
+    }
+  }
 
   return (
     <div>
@@ -410,32 +555,56 @@ function ExportView({
         Download CSV ({filteredForCSV.length} reading{filteredForCSV.length === 1 ? '' : 's'})
       </button>
 
-      <h3>Monthly poster</h3>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+      <h3>Poster / list</h3>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
         <select value={posterChildId} onChange={(e) => setPosterChildId(e.target.value)}>
           <option value="">Select child</option>
           {children.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <input type="month" value={posterMonth} onChange={(e) => setPosterMonth(e.target.value)} />
+        <input type="date" value={posterFrom} onChange={(e) => setPosterFrom(e.target.value)} aria-label="From date" />
+        <input type="date" value={posterTo} onChange={(e) => setPosterTo(e.target.value)} aria-label="To date" />
+      </div>
+      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setPosterFrom(toISODate(startOfWeek(new Date())))
+            setPosterTo(toISODate(endOfWeek(new Date())))
+          }}
+        >
+          This week
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setPosterFrom(toISODate(startOfMonth(new Date())))
+            setPosterTo(toISODate(endOfMonth(new Date())))
+          }}
+        >
+          This month
+        </button>
       </div>
 
       {posterChild && (
         <>
           <button onClick={() => window.print()}>Print poster / save as PDF</button>
           <div id="poster-print-area" className="poster">
-            <h2>{posterChild.name}'s books — {formatMonth(posterMonth)}</h2>
-            {posterSessions.length === 0 ? (
-              <p className="muted">No readings logged for this month yet.</p>
+            <h2>{posterChild.name}'s books — {formatDateRangeLabel(posterFrom, posterTo)}</h2>
+            {posterBooks.length === 0 ? (
+              <p className="muted">No readings logged for this period yet.</p>
             ) : (
               <div className="poster-grid">
-                {posterSessions.map((s) => {
-                  const edition = editionById.get(s.editionId)
+                {posterBooks.map(({ editionId, count }) => {
+                  const edition = editionById.get(editionId)
                   const title = edition?.title ?? 'Unknown book'
                   return (
-                    <div key={s.id} className="poster-item">
-                      <BookCover src={edition?.coverUrl} title={title} size="lg" />
+                    <div key={editionId} className="poster-item">
+                      <div className="poster-cover-wrap">
+                        <BookCover src={edition?.coverUrl} title={title} size="lg" />
+                        {count > 1 && <span className="poster-count-badge">×{count}</span>}
+                      </div>
                       <span>{title}</span>
                     </div>
                   )

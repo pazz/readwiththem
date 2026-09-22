@@ -158,7 +158,27 @@ img.cover-lg {
   gap: 0.2rem;
 }
 
+.poster-cover-wrap {
+  position: relative;
+}
+
+.poster-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #2c5f4f;
+  color: white;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  line-height: 1.3;
+}
+
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
   body * {
     visibility: hidden;
   }
@@ -177,6 +197,65 @@ img.cover-lg {
 .session-row {
   border-bottom: 1px solid #eee;
   padding: 0.5rem 0;
+}
+
+.session-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.recent-books {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+
+.recent-books-row {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.recent-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: white;
+  flex-shrink: 0;
+  width: 70px;
+  font-size: 0.7rem;
+  text-align: center;
+  padding: 0.3rem;
+}
+
+.recent-book span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.star-rating {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.star {
+  background: none;
+  border: none;
+  padding: 0.1rem;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #ccc;
+}
+
+.star.filled {
+  color: #e0a300;
 }
 
 .muted {

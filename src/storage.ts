@@ -51,6 +51,11 @@ export function listSessions(): Promise<ReadingSession[]> {
   return db.sessions.orderBy('date').reverse().toArray()
 }
 
+export async function deleteSession(id: string): Promise<void> {
+  await db.sessions.delete(id)
+  await logChange('session', id, 'delete', { id })
+}
+
 export async function exportBackupJSON(): Promise<string> {
   const [children, editions, sessions, changeLog] = await Promise.all([
     db.children.toArray(),
