@@ -112,8 +112,13 @@ nav .nav-icon {
   line-height: 1;
 }
 
+/* Emoji ignore `color`, so the active tab can't rely on tinting alone: it gets a
+   bar along its top edge and a tinted panel as well. */
 nav button[aria-current='true'] {
   color: var(--color-primary);
+  font-weight: 700;
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 3px 0 var(--color-primary);
 }
 
 input, select, textarea, button {
@@ -610,16 +615,34 @@ img.cover-lg {
   overflow: hidden;
 }
 
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.field-row > label,
+.field-row > div {
+  min-width: 0;
+}
+
+.field-row input[type='date'] {
+  width: 100%;
+}
+
 .star-rating {
   display: flex;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
 .star {
   background: none;
   border: none;
-  padding: 0.15rem;
-  font-size: 1.7rem;
+  /* Narrow horizontally so five fit beside the date, but kept tall enough to
+     stay a comfortable tap target. */
+  padding: 0.55rem 0.06rem;
+  font-size: 1.45rem;
   line-height: 1;
   color: var(--color-border);
   transition: color 0.1s ease, transform 0.1s ease;

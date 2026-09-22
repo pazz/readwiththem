@@ -468,14 +468,15 @@ function LogReadingView({
           )}
         </div>
 
-        <label>
-          <span className="field-label">Date</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
-
-        <div>
-          <span className="field-label">Rating (optional)</span>
-          <StarRating value={rating} onChange={setRating} />
+        <div className="field-row">
+          <label>
+            <span className="field-label">Date</span>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <div>
+            <span className="field-label">Rating</span>
+            <StarRating value={rating} onChange={setRating} />
+          </div>
         </div>
 
         <textarea placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
