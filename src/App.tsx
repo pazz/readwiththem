@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Child, Edition, ReadingSession } from './types'
 import * as storage from './storage'
 import { searchCatalogue, lookupISBN, type BookSearchResult } from './catalogue'
 import { BarcodeScanner } from './BarcodeScanner'
+import { renderPoster } from './poster'
 
-function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' | 'tile' }) {
+function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
   const [failed, setFailed] = useState(false)
-  const sizeClass = size === 'sm' ? 'cover-sm' : size === 'lg' ? 'cover-lg' : 'cover-tile'
+  const sizeClass = size === 'sm' ? 'cover-sm' : 'cover-lg'
   if (!src || failed) {
     return (
       <div className={`cover-placeholder ${sizeClass}`} role="img" aria-label={title}>
@@ -15,6 +16,61 @@ function BookCover({ src, title, size }: { src: string | undefined; title: strin
     )
   }
   return <img src={src} alt={title} className={sizeClass} onError={() => setFailed(true)} />
+}
+
+function PosterCanvas({ coverUrls, label }: { coverUrls: Array<string | undefined>; label: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [status, setStatus] = useState<'rendering' | 'ready' | 'error'>('rendering')
+  const signature = `${label}::${coverUrls.join('|')}`
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    let cancelled = false
+    setStatus('rendering')
+    renderPoster(canvas, coverUrls, label)
+      .then(() => !cancelled && setStatus('ready'))
+      .catch((err) => {
+        console.error('poster render failed', err)
+        if (!cancelled) setStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature])
+
+  const downloadImage = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) download('readwiththem-poster.png', blob, 'image/png')
+      }, 'image/png')
+    } catch (err) {
+      console.error('poster download failed', err)
+      setStatus('error')
+    }
+  }
+
+  return (
+    <>
+      <button className="submit-btn print-btn" onClick={downloadImage} disabled={status !== 'ready'}>
+        {status === 'rendering' ? 'Preparing poster…' : 'Download poster (PNG)'}
+      </button>
+      <button className="btn-secondary print-btn secondary-print" onClick={() => window.print()}>
+        Print / save as PDF
+      </button>
+      <p className="muted print-hint">
+        {status === 'error'
+          ? 'The poster could not be generated — some covers may be unavailable.'
+          : 'Always exactly one A4 page. Save the image to share it, or print it straight from your gallery.'}
+      </p>
+      <div id="poster-print-area" className="print-page poster-mode">
+        <canvas ref={canvasRef} className="poster-canvas" />
+      </div>
+    </>
+  )
 }
 
 function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -491,8 +547,8 @@ function HistoryView({
   )
 }
 
-function download(filename: string, content: string, mime: string) {
-  const blob = new Blob([content], { type: mime })
+function download(filename: string, content: string | Blob, mime: string) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mime })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -683,10 +739,14 @@ function ExportView({
           </button>
         </div>
 
-        <button className="submit-btn print-btn" onClick={() => window.print()}>
-          Print {exportStyle} / save as PDF
-        </button>
-        <p className="muted print-hint">Opens your device's print dialog — pick A4, or "Save as PDF" to keep a copy.</p>
+        {exportStyle === 'list' && (
+          <>
+            <button className="submit-btn print-btn" onClick={() => window.print()}>
+              Print list / save as PDF
+            </button>
+            <p className="muted print-hint">Opens your device's print dialog — pick A4, or "Save as PDF" to keep a copy.</p>
+          </>
+        )}
 
         {exportStyle === 'list' ? (
           <div id="poster-print-area" className="print-page list-mode">
@@ -712,20 +772,10 @@ function ExportView({
               </ul>
             )}
           </div>
+        ) : filtered.length === 0 ? (
+          <p className="muted">No readings logged for this selection yet.</p>
         ) : (
-          <div id="poster-print-area" className="print-page poster-mode">
-            {filtered.length === 0 ? (
-              <p className="muted">No readings logged for this selection yet.</p>
-            ) : (
-              <div className="poster-mosaic">
-                {filtered.map((s) => {
-                  const edition = editionById.get(s.editionId)
-                  return <BookCover key={s.id} src={edition?.coverUrl} title={edition?.title ?? 'Unknown book'} size="tile" />
-                })}
-                <span className="poster-date-badge">{rangeLabel}</span>
-              </div>
-            )}
-          </div>
+          <PosterCanvas coverUrls={filtered.map((s) => editionById.get(s.editionId)?.coverUrl)} label={rangeLabel} />
         )}
       </div>
 

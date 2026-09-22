@@ -225,20 +225,10 @@ form {
   height: 126px;
 }
 
-.cover-tile {
-  width: 100%;
-  height: 100%;
-}
-
 img.cover-sm,
 img.cover-lg {
   object-fit: cover;
   border-radius: 4px;
-}
-
-img.cover-tile {
-  object-fit: cover;
-  display: block;
 }
 
 .cover-placeholder {
@@ -451,9 +441,10 @@ img.cover-tile {
   padding: 1rem;
 }
 
+/* The canvas carries the A4 shape itself, so the frame just wraps it. */
 .print-page.poster-mode {
-  aspect-ratio: 210 / 297;
-  position: relative;
+  padding: 0;
+  line-height: 0;
 }
 
 .export-list {
@@ -479,29 +470,14 @@ img.cover-tile {
   min-width: 0;
 }
 
-.poster-mosaic {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 0;
+.poster-canvas {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
 }
 
-.poster-date-badge {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(20, 20, 15, 0.72);
-  color: #fff;
-  padding: 0.4rem 1.1rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
+.secondary-print {
+  margin-top: 0.5rem;
 }
 
 @media print {
@@ -527,10 +503,20 @@ img.cover-tile {
     width: 100%;
     border: none;
   }
+  /* Sized in mm against the paper, never vh — vh resolves to the screen
+     viewport when printing and was what pushed the poster onto a second page.
+     The height is shaved marginally under 297mm so sub-pixel rounding can
+     never spill a second sheet. */
   #poster-print-area.poster-mode {
-    height: 100vh;
-    aspect-ratio: auto;
     page: poster;
+    width: 210mm;
+    height: 296.5mm;
+    overflow: hidden;
+  }
+  #poster-print-area.poster-mode canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 }
 
