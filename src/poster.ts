@@ -85,15 +85,54 @@ function drawDateBadge(ctx: CanvasRenderingContext2D, label: string) {
   ctx.fillText(label, POSTER_WIDTH / 2, boxY + boxH / 2)
 }
 
+function drawCountBadge(ctx: CanvasRenderingContext2D, count: number, tileX: number, tileY: number, tileW: number) {
+  const text = `×${count}`
+  // Clamped: it stays a small hint on a full-page single tile, and stays legible
+  // when a long history squeezes tiles down to a few millimetres.
+  const fontSize = Math.round(Math.min(34, Math.max(9, tileW * 0.15)))
+  ctx.font = `700 ${fontSize}px system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const padX = fontSize * 0.5
+  const boxW = ctx.measureText(text).width + padX * 2
+  const boxH = fontSize * 1.6
+  const inset = Math.max(3, tileW * 0.04)
+  const boxX = tileX + tileW - boxW - inset
+  const boxY = tileY + inset
+
+  ctx.beginPath()
+  if (ctx.roundRect) {
+    ctx.roundRect(boxX, boxY, boxW, boxH, boxH / 2)
+  } else {
+    ctx.rect(boxX, boxY, boxW, boxH)
+  }
+  ctx.fillStyle = '#2c5f4f'
+  ctx.fill()
+  // A hairline outline keeps the pill readable over a dark or green cover.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
+  ctx.lineWidth = Math.max(1, fontSize * 0.07)
+  ctx.stroke()
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillText(text, boxX + boxW / 2, boxY + boxH / 2)
+}
+
+export interface PosterTile {
+  coverUrl?: string
+  count: number
+}
+
 /**
- * Draw one tile per entry, cycling through them to fill every cell so the page
- * is covered edge to edge. Entries without a usable cover get a tinted panel so
- * the result still reads as a pattern rather than a hole.
+ * Draw one tile per book, cycling through them to fill every cell so the page is
+ * covered edge to edge. Books without a usable cover get a tinted panel so the
+ * result still reads as a pattern rather than a hole.
  */
 export async function renderPoster(
   canvas: HTMLCanvasElement,
-  coverUrls: Array<string | undefined>,
+  tiles: PosterTile[],
   label: string,
+  options: { showCounts?: boolean } = {},
 ): Promise<void> {
   canvas.width = POSTER_WIDTH
   canvas.height = POSTER_HEIGHT
@@ -102,11 +141,17 @@ export async function renderPoster(
 
   ctx.fillStyle = '#2c5f4f'
   ctx.fillRect(0, 0, POSTER_WIDTH, POSTER_HEIGHT)
-  if (coverUrls.length === 0) return
+  if (tiles.length === 0) return
 
-  const images = await Promise.all(coverUrls.map((url) => (url ? loadImage(url) : Promise.resolve(null))))
+  // Load each distinct cover once. Decoding the same picture per tile would hold
+  // a separate bitmap in memory for every repeat (~200KB each), which adds up to
+  // hundreds of megabytes on a long history.
+  const uniqueUrls = Array.from(new Set(tiles.map((t) => t.coverUrl).filter((url): url is string => !!url)))
+  const loaded = await Promise.all(uniqueUrls.map(loadImage))
+  const imageByUrl = new Map<string, HTMLImageElement | null>()
+  uniqueUrls.forEach((url, i) => imageByUrl.set(url, loaded[i]))
 
-  const { cols, rows } = chooseGrid(coverUrls.length)
+  const { cols, rows } = chooseGrid(tiles.length)
   const tileW = POSTER_WIDTH / cols
   const tileH = POSTER_HEIGHT / rows
 
@@ -120,13 +165,16 @@ export async function renderPoster(
     const w = Math.ceil(tileW) + 1
     const h = Math.ceil(tileH) + 1
 
-    const img = images[cell % images.length]
+    const tile = tiles[cell % tiles.length]
+    const img = tile.coverUrl ? imageByUrl.get(tile.coverUrl) : null
     if (img) {
       drawCoverFit(ctx, img, x, y, w, h)
     } else {
       ctx.fillStyle = cell % 2 === 0 ? '#2c5f4f' : '#35705e'
       ctx.fillRect(x, y, w, h)
     }
+
+    if (options.showCounts) drawCountBadge(ctx, tile.count, x, y, tileW)
   }
 
   drawDateBadge(ctx, label)

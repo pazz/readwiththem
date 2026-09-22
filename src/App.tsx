@@ -3,7 +3,7 @@ import type { Child, Edition, ReadingSession } from './types'
 import * as storage from './storage'
 import { searchCatalogue, lookupISBN, type BookSearchResult } from './catalogue'
 import { BarcodeScanner } from './BarcodeScanner'
-import { renderPoster } from './poster'
+import { renderPoster, type PosterTile } from './poster'
 
 function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
   const [failed, setFailed] = useState(false)
@@ -18,17 +18,17 @@ function BookCover({ src, title, size }: { src: string | undefined; title: strin
   return <img src={src} alt={title} className={sizeClass} onError={() => setFailed(true)} />
 }
 
-function PosterCanvas({ coverUrls, label }: { coverUrls: Array<string | undefined>; label: string }) {
+function PosterCanvas({ tiles, label, showCounts }: { tiles: PosterTile[]; label: string; showCounts: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [status, setStatus] = useState<'rendering' | 'ready' | 'error'>('rendering')
-  const signature = `${label}::${coverUrls.join('|')}`
+  const signature = `${label}::${showCounts}::${tiles.map((t) => `${t.coverUrl}~${t.count}`).join('|')}`
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     let cancelled = false
     setStatus('rendering')
-    renderPoster(canvas, coverUrls, label)
+    renderPoster(canvas, tiles, label, { showCounts })
       .then(() => !cancelled && setStatus('ready'))
       .catch((err) => {
         console.error('poster render failed', err)
@@ -626,7 +626,8 @@ function ExportView({
   const [filterChildId, setFilterChildId] = useState(activeChildId)
   const [from, setFrom] = useState(() => toISODate(startOfMonth(new Date())))
   const [to, setTo] = useState(() => toISODate(endOfMonth(new Date())))
-  const [exportStyle, setExportStyle] = useState<'list' | 'poster'>('list')
+  const [exportStyle, setExportStyle] = useState<'plain' | 'pretty' | 'poster'>('pretty')
+  const [showCounts, setShowCounts] = useState(false)
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
@@ -721,25 +722,29 @@ function ExportView({
       <div className="card">
         <h3>Print</h3>
         <div className="segmented">
-          <button
-            type="button"
-            aria-pressed={exportStyle === 'list'}
-            className={exportStyle === 'list' ? 'active' : ''}
-            onClick={() => setExportStyle('list')}
-          >
-            Pretty list
-          </button>
-          <button
-            type="button"
-            aria-pressed={exportStyle === 'poster'}
-            className={exportStyle === 'poster' ? 'active' : ''}
-            onClick={() => setExportStyle('poster')}
-          >
-            Poster
-          </button>
+          {([
+            ['plain', 'Plain list'],
+            ['pretty', 'Pretty list'],
+            ['poster', 'Poster'],
+          ] as const).map(([value, labelText]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={exportStyle === value}
+              className={exportStyle === value ? 'active' : ''}
+              onClick={() => setExportStyle(value)}
+            >
+              {labelText}
+            </button>
+          ))}
         </div>
 
-        {exportStyle === 'list' && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={showCounts} onChange={(e) => setShowCounts(e.target.checked)} />
+          Include how often each book was read
+        </label>
+
+        {exportStyle !== 'poster' && (
           <>
             <button className="submit-btn print-btn" onClick={() => window.print()}>
               Print list / save as PDF
@@ -748,34 +753,45 @@ function ExportView({
           </>
         )}
 
-        {exportStyle === 'list' ? (
+        {exportStyle !== 'poster' ? (
           <div id="poster-print-area" className="print-page list-mode">
             <h2>{filterChild ? `${filterChild.name}'s books` : 'Our books'} — {rangeLabel}</h2>
             {books.length === 0 ? (
               <p className="muted">No readings logged for this selection yet.</p>
             ) : (
-              <ul className="export-list">
+              <ul className={`export-list${exportStyle === 'plain' ? ' plain' : ''}`}>
                 {books.map(({ editionId, count }) => {
                   const edition = editionById.get(editionId)
                   const title = edition?.title ?? 'Unknown book'
                   return (
                     <li key={editionId} className="export-list-row">
-                      <BookCover src={edition?.coverUrl} title={title} size="sm" />
+                      {exportStyle === 'pretty' && (
+                        <span className="cover-with-count">
+                          <BookCover src={edition?.coverUrl} title={title} size="sm" />
+                          {showCounts && <span className="count-badge">×{count}</span>}
+                        </span>
+                      )}
                       <div className="export-list-text">
                         <strong>{title}</strong>
                         {edition?.author && <span className="muted"> — {edition.author}</span>}
                       </div>
-                      {count > 1 && <span className="muted">×{count}</span>}
+                      {exportStyle === 'plain' && showCounts && <span className="count-inline">×{count}</span>}
                     </li>
                   )
                 })}
               </ul>
             )}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : books.length === 0 ? (
           <p className="muted">No readings logged for this selection yet.</p>
         ) : (
-          <PosterCanvas coverUrls={filtered.map((s) => editionById.get(s.editionId)?.coverUrl)} label={rangeLabel} />
+          // One tile per distinct book, not per reading: re-reads would otherwise
+          // repeat the same cover and shrink every tile for no extra information.
+          <PosterCanvas
+            tiles={books.map((b) => ({ coverUrl: editionById.get(b.editionId)?.coverUrl, count: b.count }))}
+            label={rangeLabel}
+            showCounts={showCounts}
+          />
         )}
       </div>
 
