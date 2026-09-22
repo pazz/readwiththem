@@ -220,7 +220,7 @@ function LogReadingView({
   const [results, setResults] = useState<BookSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState<BookSearchResult | null>(null)
-  const [mode, setMode] = useState<'none' | 'scan' | 'search' | 'manual'>('none')
+  const [mode, setMode] = useState<'none' | 'scan' | 'recents' | 'search' | 'manual'>('none')
   const [manualTitle, setManualTitle] = useState('')
   const [manualAuthor, setManualAuthor] = useState('')
   const [manualIsbn, setManualIsbn] = useState('')
@@ -352,9 +352,14 @@ function LogReadingView({
             </div>
           ) : mode === 'none' ? (
             <div className="book-entry-modes">
-              <button type="button" className="mode-scan" onClick={() => setMode('scan')}>
-                <span aria-hidden="true">📖</span> Scan barcode
-              </button>
+              <div className="mode-primary-row">
+                <button type="button" className="mode-primary" onClick={() => setMode('recents')}>
+                  <span aria-hidden="true">🔁</span> Recents
+                </button>
+                <button type="button" className="mode-primary" onClick={() => setMode('scan')}>
+                  <span aria-hidden="true">📖</span> Scan barcode
+                </button>
+              </div>
               <div className="mode-secondary-row">
                 <button type="button" onClick={() => setMode('manual')}>Add manually</button>
                 <button type="button" onClick={() => setMode('search')}>Search</button>
@@ -362,27 +367,30 @@ function LogReadingView({
             </div>
           ) : mode === 'scan' ? (
             <BarcodeScanner onDetect={handleScanned} onClose={() => setMode('none')} />
+          ) : mode === 'recents' ? (
+            <div>
+              <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
+              {recentEditions.length > 0 ? (
+                <div className="recent-books-row">
+                  {recentEditions.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      className="recent-book"
+                      onClick={() => setSelected({ title: e.title, author: e.author, isbn: e.isbn, coverUrl: e.coverUrl })}
+                    >
+                      <BookCover src={e.coverUrl} title={e.title} size="sm" />
+                      <span>{e.title}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">No recently read books yet — try Search or Scan instead.</p>
+              )}
+            </div>
           ) : mode === 'search' ? (
             <div>
               <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
-              {recentEditions.length > 0 && (
-                <div className="recent-books">
-                  <span className="muted">Recently read — tap to log again</span>
-                  <div className="recent-books-row">
-                    {recentEditions.map((e) => (
-                      <button
-                        key={e.id}
-                        type="button"
-                        className="recent-book"
-                        onClick={() => setSelected({ title: e.title, author: e.author, isbn: e.isbn, coverUrl: e.coverUrl })}
-                      >
-                        <BookCover src={e.coverUrl} title={e.title} size="sm" />
-                        <span>{e.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <input placeholder="Search title or author" value={query} onChange={(e) => setQuery(e.target.value)} />
                 <button type="button" onClick={runSearch} disabled={searching}>{searching ? 'Searching…' : 'Search'}</button>

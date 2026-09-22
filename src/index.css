@@ -288,9 +288,15 @@ img.cover-lg {
   gap: 0.6rem;
 }
 
-.mode-scan {
-  font-size: 1.1rem;
-  padding: 1.1rem;
+.mode-primary-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.mode-primary {
+  flex: 1;
+  font-size: 1.05rem;
+  padding: 1.1rem 0.6rem;
   background: var(--color-primary);
   color: var(--color-primary-contrast);
   border: none;
@@ -302,12 +308,12 @@ img.cover-lg {
   box-shadow: var(--shadow-sm);
 }
 
-.mode-scan:hover {
+.mode-primary:hover {
   background: var(--color-primary-hover);
 }
 
-.mode-scan span {
-  font-size: 1.4rem;
+.mode-primary span {
+  font-size: 1.3rem;
 }
 
 .mode-secondary-row {
@@ -422,15 +428,9 @@ img.cover-lg {
   gap: 0.5rem;
 }
 
-.recent-books {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.8rem;
-}
-
 .recent-books-row {
   display: flex;
+  margin-top: 0.6rem;
   gap: 0.5rem;
   overflow-x: auto;
   padding-bottom: 0.2rem;
