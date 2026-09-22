@@ -197,8 +197,7 @@ function LogReadingView({
   const [results, setResults] = useState<BookSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState<BookSearchResult | null>(null)
-  const [scanning, setScanning] = useState(false)
-  const [manualOpen, setManualOpen] = useState(false)
+  const [mode, setMode] = useState<'none' | 'scan' | 'search' | 'manual'>('none')
   const [manualTitle, setManualTitle] = useState('')
   const [manualAuthor, setManualAuthor] = useState('')
   const [manualIsbn, setManualIsbn] = useState('')
@@ -219,12 +218,12 @@ function LogReadingView({
     .filter((e): e is Edition => !!e)
 
   const handleScanned = async (isbn: string) => {
-    setScanning(false)
     setStatus('Looking up scanned ISBN…')
     try {
       const found = await lookupISBN(isbn)
       if (found) {
         setSelected(found)
+        setMode('none')
         setStatus('')
         return
       }
@@ -233,7 +232,7 @@ function LogReadingView({
       setStatus(`Scanned ISBN ${isbn}, but the lookup failed — check your connection, or fill in the title below.`)
     }
     setManualIsbn(isbn)
-    setManualOpen(true)
+    setMode('manual')
   }
 
   const runSearch = async (e: React.FormEvent) => {
@@ -278,10 +277,10 @@ function LogReadingView({
       })
 
       setSelected(null)
+      setMode('none')
       setManualTitle('')
       setManualAuthor('')
       setManualIsbn('')
-      setManualOpen(false)
       setNote('')
       setRating('')
       setResults([])
@@ -317,12 +316,31 @@ function LogReadingView({
             <div className="search-result">
               <BookCover src={selected.coverUrl} title={selected.title} size="sm" />
               <span>{selected.title} — {selected.author}</span>
-              <button type="button" onClick={() => setSelected(null)}>Change</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected(null)
+                  setMode('none')
+                }}
+              >
+                Change
+              </button>
             </div>
-          ) : scanning ? (
-            <BarcodeScanner onDetect={handleScanned} onClose={() => setScanning(false)} />
-          ) : (
-            <>
+          ) : mode === 'none' ? (
+            <div className="book-entry-modes">
+              <button type="button" className="mode-scan" onClick={() => setMode('scan')}>
+                <span aria-hidden="true">📖</span> Scan barcode
+              </button>
+              <div className="mode-secondary-row">
+                <button type="button" onClick={() => setMode('manual')}>Add manually</button>
+                <button type="button" onClick={() => setMode('search')}>Search</button>
+              </div>
+            </div>
+          ) : mode === 'scan' ? (
+            <BarcodeScanner onDetect={handleScanned} onClose={() => setMode('none')} />
+          ) : mode === 'search' ? (
+            <div>
+              <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
               {recentEditions.length > 0 && (
                 <div className="recent-books">
                   <span className="muted">Recently read — tap to log again</span>
@@ -344,7 +362,6 @@ function LogReadingView({
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <input placeholder="Search title or author" value={query} onChange={(e) => setQuery(e.target.value)} />
                 <button type="button" onClick={runSearch} disabled={searching}>{searching ? 'Searching…' : 'Search'}</button>
-                <button type="button" onClick={() => setScanning(true)}>Scan barcode</button>
               </div>
               {results.map((r, i) => (
                 <div key={i} className="search-result" onClick={() => setSelected(r)}>
@@ -352,13 +369,14 @@ function LogReadingView({
                   <span>{r.title} — {r.author}</span>
                 </div>
               ))}
-              <details open={manualOpen} onToggle={(e) => setManualOpen(e.currentTarget.open)}>
-                <summary>Can't find it — add manually</summary>
-                <input placeholder="Title" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
-                <input placeholder="Author" value={manualAuthor} onChange={(e) => setManualAuthor(e.target.value)} />
-                <input placeholder="ISBN (optional)" value={manualIsbn} onChange={(e) => setManualIsbn(e.target.value)} />
-              </details>
-            </>
+            </div>
+          ) : (
+            <div>
+              <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
+              <input placeholder="Title" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
+              <input placeholder="Author" value={manualAuthor} onChange={(e) => setManualAuthor(e.target.value)} />
+              <input placeholder="ISBN (optional)" value={manualIsbn} onChange={(e) => setManualIsbn(e.target.value)} />
+            </div>
           )}
         </div>
 
