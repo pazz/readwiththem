@@ -536,7 +536,13 @@ function endOfWeek(d: Date): Date {
   return sunday
 }
 
+// An empty bound means unbounded, so the same range powers "this month" and "all time".
 function formatDateRangeLabel(from: string, to: string): string {
+  const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (!from && !to) return 'All time'
+  if (!from) return `Up to ${fmt(parseISODate(to))}`
+  if (!to) return `From ${fmt(parseISODate(from))}`
+
   const fromDate = parseISODate(from)
   const toDate = parseISODate(to)
   const isFullMonth =
@@ -545,7 +551,6 @@ function formatDateRangeLabel(from: string, to: string): string {
     fromDate.getFullYear() === toDate.getFullYear() &&
     toISODate(toDate) === toISODate(endOfMonth(fromDate))
   if (isFullMonth) return fromDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-  const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   return `${fmt(fromDate)} – ${fmt(toDate)}`
 }
 
@@ -560,87 +565,72 @@ function ExportView({
   sessions: ReadingSession[]
   activeChildId: string
 }) {
-  const [csvChildId, setCsvChildId] = useState('')
-  const [csvFrom, setCsvFrom] = useState('')
-  const [csvTo, setCsvTo] = useState('')
-  const [posterChildId, setPosterChildId] = useState(activeChildId)
-  const [posterFrom, setPosterFrom] = useState(() => toISODate(startOfMonth(new Date())))
-  const [posterTo, setPosterTo] = useState(() => toISODate(endOfMonth(new Date())))
+  // One selection drives every filtered export, rather than each output carrying
+  // its own copy of the same child + date-range controls.
+  const [filterChildId, setFilterChildId] = useState(activeChildId)
+  const [from, setFrom] = useState(() => toISODate(startOfMonth(new Date())))
+  const [to, setTo] = useState(() => toISODate(endOfMonth(new Date())))
   const [exportStyle, setExportStyle] = useState<'list' | 'poster'>('list')
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
-  const filteredForCSV = sessions.filter((s) => {
-    if (csvChildId && s.childId !== csvChildId) return false
-    if (csvFrom && s.date < csvFrom) return false
-    if (csvTo && s.date > csvTo) return false
-    return true
-  })
-
-  const posterChild = children.find((c) => c.id === posterChildId)
-  const posterSessionsInRange = sessions
-    .filter((s) => s.childId === posterChildId && s.date >= posterFrom && s.date <= posterTo)
+  const filtered = sessions
+    .filter((s) => {
+      if (filterChildId && s.childId !== filterChildId) return false
+      if (from && s.date < from) return false
+      if (to && s.date > to) return false
+      return true
+    })
     .sort((a, b) => a.date.localeCompare(b.date))
 
+  const filterChild = children.find((c) => c.id === filterChildId)
+  const rangeLabel = formatDateRangeLabel(from, to)
+
   // One entry per book, not per reading — a re-read shows a "×N" badge instead of repeating the cover.
-  const posterBooks: Array<{ editionId: string; count: number }> = []
-  const posterBookIndex = new Map<string, number>()
-  for (const s of posterSessionsInRange) {
-    const existingIndex = posterBookIndex.get(s.editionId)
+  const books: Array<{ editionId: string; count: number }> = []
+  const bookIndex = new Map<string, number>()
+  for (const s of filtered) {
+    const existingIndex = bookIndex.get(s.editionId)
     if (existingIndex === undefined) {
-      posterBookIndex.set(s.editionId, posterBooks.length)
-      posterBooks.push({ editionId: s.editionId, count: 1 })
+      bookIndex.set(s.editionId, books.length)
+      books.push({ editionId: s.editionId, count: 1 })
     } else {
-      posterBooks[existingIndex].count += 1
+      books[existingIndex].count += 1
     }
   }
 
   return (
     <div>
       <div className="card">
-        <h3>Backup</h3>
-        <p className="muted">Export is your backup — this prototype keeps data only in this browser.</p>
-        <button className="btn-secondary" onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}>
-          Download full JSON backup
-        </button>
-      </div>
-
-      <div className="card">
-        <h3>Reading history CSV</h3>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
-          <select value={csvChildId} onChange={(e) => setCsvChildId(e.target.value)}>
+        <h3>What to export</h3>
+        <label className="filter-field">
+          <span className="field-label">Child</span>
+          <select value={filterChildId} onChange={(e) => setFilterChildId(e.target.value)}>
             <option value="">All children</option>
             {children.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <input type="date" value={csvFrom} onChange={(e) => setCsvFrom(e.target.value)} aria-label="From date" />
-          <input type="date" value={csvTo} onChange={(e) => setCsvTo(e.target.value)} aria-label="To date" />
-        </div>
-        <button className="btn-secondary" onClick={() => download('readwiththem-sessions.csv', storage.sessionsToCSV(filteredForCSV, children, editions), 'text/csv')}>
-          Download CSV ({filteredForCSV.length} reading{filteredForCSV.length === 1 ? '' : 's'})
-        </button>
-      </div>
+        </label>
 
-      <div className="card">
-        <h3>Poster / list</h3>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
-          <select value={posterChildId} onChange={(e) => setPosterChildId(e.target.value)}>
-            <option value="">Select child</option>
-            {children.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <input type="date" value={posterFrom} onChange={(e) => setPosterFrom(e.target.value)} aria-label="From date" />
-          <input type="date" value={posterTo} onChange={(e) => setPosterTo(e.target.value)} aria-label="To date" />
+        <div className="filter-dates">
+          <label>
+            <span className="field-label">From</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label>
+            <span className="field-label">To</span>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </label>
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
+
+        <div className="preset-row">
           <button
             type="button"
             className="btn-secondary"
             onClick={() => {
-              setPosterFrom(toISODate(startOfWeek(new Date())))
-              setPosterTo(toISODate(endOfWeek(new Date())))
+              setFrom(toISODate(startOfWeek(new Date())))
+              setTo(toISODate(endOfWeek(new Date())))
             }}
           >
             This week
@@ -649,70 +639,110 @@ function ExportView({
             type="button"
             className="btn-secondary"
             onClick={() => {
-              setPosterFrom(toISODate(startOfMonth(new Date())))
-              setPosterTo(toISODate(endOfMonth(new Date())))
+              setFrom(toISODate(startOfMonth(new Date())))
+              setTo(toISODate(endOfMonth(new Date())))
             }}
           >
             This month
           </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setFrom('')
+              setTo('')
+            }}
+          >
+            All time
+          </button>
         </div>
 
-        {posterChild && (
-          <>
-            <div className="segmented">
-              <button type="button" className={exportStyle === 'list' ? 'active' : ''} onClick={() => setExportStyle('list')}>
-                Pretty list
-              </button>
-              <button type="button" className={exportStyle === 'poster' ? 'active' : ''} onClick={() => setExportStyle('poster')}>
-                Poster
-              </button>
-            </div>
+        <p className="muted export-summary">
+          {filtered.length} reading{filtered.length === 1 ? '' : 's'} · {books.length} book{books.length === 1 ? '' : 's'} · {rangeLabel}
+        </p>
+      </div>
 
-            <button className="submit-btn" onClick={() => window.print()}>
-              Print {exportStyle} / save as PDF
-            </button>
+      <div className="card">
+        <h3>Print</h3>
+        <div className="segmented">
+          <button
+            type="button"
+            aria-pressed={exportStyle === 'list'}
+            className={exportStyle === 'list' ? 'active' : ''}
+            onClick={() => setExportStyle('list')}
+          >
+            Pretty list
+          </button>
+          <button
+            type="button"
+            aria-pressed={exportStyle === 'poster'}
+            className={exportStyle === 'poster' ? 'active' : ''}
+            onClick={() => setExportStyle('poster')}
+          >
+            Poster
+          </button>
+        </div>
 
-            {exportStyle === 'list' ? (
-              <div id="poster-print-area" className="print-page list-mode">
-                <h2>{posterChild.name}'s books — {formatDateRangeLabel(posterFrom, posterTo)}</h2>
-                {posterBooks.length === 0 ? (
-                  <p className="muted">No readings logged for this period yet.</p>
-                ) : (
-                  <ul className="export-list">
-                    {posterBooks.map(({ editionId, count }) => {
-                      const edition = editionById.get(editionId)
-                      const title = edition?.title ?? 'Unknown book'
-                      return (
-                        <li key={editionId} className="export-list-row">
-                          <BookCover src={edition?.coverUrl} title={title} size="sm" />
-                          <div className="export-list-text">
-                            <strong>{title}</strong>
-                            {edition?.author && <span className="muted"> — {edition.author}</span>}
-                          </div>
-                          {count > 1 && <span className="muted">×{count}</span>}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
+        <button className="submit-btn print-btn" onClick={() => window.print()}>
+          Print {exportStyle} / save as PDF
+        </button>
+        <p className="muted print-hint">Opens your device's print dialog — pick A4, or "Save as PDF" to keep a copy.</p>
+
+        {exportStyle === 'list' ? (
+          <div id="poster-print-area" className="print-page list-mode">
+            <h2>{filterChild ? `${filterChild.name}'s books` : 'Our books'} — {rangeLabel}</h2>
+            {books.length === 0 ? (
+              <p className="muted">No readings logged for this selection yet.</p>
             ) : (
-              <div id="poster-print-area" className="print-page poster-mode">
-                {posterSessionsInRange.length === 0 ? (
-                  <p className="muted">No readings logged for this period yet.</p>
-                ) : (
-                  <div className="poster-mosaic">
-                    {posterSessionsInRange.map((s) => {
-                      const edition = editionById.get(s.editionId)
-                      return <BookCover key={s.id} src={edition?.coverUrl} title={edition?.title ?? 'Unknown book'} size="tile" />
-                    })}
-                    <span className="poster-date-badge">{formatDateRangeLabel(posterFrom, posterTo)}</span>
-                  </div>
-                )}
+              <ul className="export-list">
+                {books.map(({ editionId, count }) => {
+                  const edition = editionById.get(editionId)
+                  const title = edition?.title ?? 'Unknown book'
+                  return (
+                    <li key={editionId} className="export-list-row">
+                      <BookCover src={edition?.coverUrl} title={title} size="sm" />
+                      <div className="export-list-text">
+                        <strong>{title}</strong>
+                        {edition?.author && <span className="muted"> — {edition.author}</span>}
+                      </div>
+                      {count > 1 && <span className="muted">×{count}</span>}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <div id="poster-print-area" className="print-page poster-mode">
+            {filtered.length === 0 ? (
+              <p className="muted">No readings logged for this selection yet.</p>
+            ) : (
+              <div className="poster-mosaic">
+                {filtered.map((s) => {
+                  const edition = editionById.get(s.editionId)
+                  return <BookCover key={s.id} src={edition?.coverUrl} title={edition?.title ?? 'Unknown book'} size="tile" />
+                })}
+                <span className="poster-date-badge">{rangeLabel}</span>
               </div>
             )}
-          </>
+          </div>
         )}
+      </div>
+
+      <div className="card">
+        <h3>Download</h3>
+        <div className="download-row">
+          <button className="btn-secondary" onClick={() => download('readwiththem-sessions.csv', storage.sessionsToCSV(filtered, children, editions), 'text/csv')}>
+            CSV ({filtered.length} reading{filtered.length === 1 ? '' : 's'})
+          </button>
+          <span className="muted">One row per reading, for the selection above.</span>
+        </div>
+        <div className="download-row">
+          <button className="btn-secondary" onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}>
+            Full JSON backup
+          </button>
+          <span className="muted">Everything in this browser, ignoring the selection above. This is your backup — the data lives nowhere else.</span>
+        </div>
       </div>
     </div>
   )

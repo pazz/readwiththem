@@ -351,12 +351,78 @@ img.cover-tile {
   background: black;
 }
 
+.filter-field {
+  display: block;
+  margin-bottom: 0.7rem;
+}
+
+.filter-field select {
+  width: 100%;
+}
+
+.filter-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.filter-dates label {
+  display: block;
+}
+
+.filter-dates input {
+  width: 100%;
+}
+
+.preset-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.preset-row button {
+  flex: 1;
+  padding: 0.5rem 0.3rem;
+  font-size: 0.85rem;
+}
+
+.export-summary {
+  margin: 0.8rem 0 0;
+}
+
+.print-btn {
+  display: block;
+  width: 100%;
+}
+
+.print-hint {
+  margin: 0.5rem 0 0;
+}
+
+.download-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.download-row + .download-row {
+  margin-top: 1rem;
+}
+
+.download-row button {
+  width: 100%;
+}
+
 .segmented {
-  display: inline-flex;
+  display: flex;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.segmented button {
+  flex: 1;
 }
 
 .segmented button {
