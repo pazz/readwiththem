@@ -292,6 +292,9 @@ img.cover-lg {
 .back-btn {
   display: inline-flex;
   align-items: center;
+  /* Hugs its content even inside a flex column (the scanner), where the
+     default stretch alignment would otherwise pull it to full width. */
+  align-self: flex-start;
   gap: 0.3rem;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
@@ -312,21 +315,26 @@ img.cover-lg {
   color: var(--color-primary);
 }
 
-/* Deliberately understated: a dashed, muted-text field rather than a normal
-   input, so it reads as an optional aside sitting on top of the cascade
-   rather than a form field demanding to be filled in. */
-.again-note {
-  width: 100%;
-  margin-bottom: 0.8rem;
-  background: transparent;
-  border: 1px dashed var(--color-border);
-  color: var(--color-text-muted);
+/* Labelled, full-width fields matching the Date/Rating row below, rather than
+   bare placeholder-only inputs at their intrinsic width. */
+.manual-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
 }
 
-.again-note:focus-visible {
-  color: var(--color-text);
-  border-style: solid;
-  border-color: var(--color-primary);
+.manual-entry label {
+  display: block;
+}
+
+.manual-entry input {
+  width: 100%;
+}
+
+/* Keeps the cover-photo link left-aligned with the fields, rather than being
+   stretched and centre-aligned by the flex column. */
+.manual-entry .link-btn {
+  align-self: flex-start;
 }
 
 .book-entry-modes {

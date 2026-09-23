@@ -98,7 +98,7 @@ export function CoverCapture({ onCapture, onClose }: { onCapture: (blob: Blob) =
             📷 Capture
           </button>
         )}
-        <button type="button" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
       </div>
     </div>
   )

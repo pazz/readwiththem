@@ -323,7 +323,6 @@ function LogReadingView({
   const [coverPhotoBlob, setCoverPhotoBlob] = useState<Blob | null>(null)
   const [coverPhotoPreviewUrl, setCoverPhotoPreviewUrl] = useState<string | null>(null)
   const [capturingCover, setCapturingCover] = useState(false)
-  const [againNote, setAgainNote] = useState('')
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
@@ -355,15 +354,22 @@ function LogReadingView({
     .map(([editionId]) => editions.find((e) => e.id === editionId))
     .filter((e): e is Edition => !!e)
 
-  // One tap logs the book for today — no form, no second step. Whatever's in
-  // the note field at the moment of tapping goes on that entry, then clears,
-  // so it doesn't linger onto the next book tapped afterwards.
+  // One tap logs the book — no second step. It uses the same date/rating/note
+  // fields shown below for every entry mode, rather than a separate set, and
+  // clears the note and rating afterwards so they can't carry over onto the
+  // next book tapped.
   const readAgain = async (edition: Edition) => {
     if (!activeChild) return
-    const note = againNote.trim() || undefined
     try {
-      await storage.logReading({ childId: activeChild.id, editionId: edition.id, date: toISODate(new Date()), note })
-      setAgainNote('')
+      await storage.logReading({
+        childId: activeChild.id,
+        editionId: edition.id,
+        date,
+        note: note.trim() || undefined,
+        rating: rating ? Number(rating) : undefined,
+      })
+      setNote('')
+      setRating('')
       confirm(`Logged ${edition.title}`)
       onChange()
     } catch (err) {
@@ -533,13 +539,7 @@ function LogReadingView({
               </button>
               {recentEditions.length > 0 ? (
                 <>
-                  <p className="muted">Tap a book to log it again for today.</p>
-                  <input
-                    className="again-note"
-                    placeholder="Add a note for today's read (optional)"
-                    value={againNote}
-                    onChange={(e) => setAgainNote(e.target.value)}
-                  />
+                  <p className="muted">Tap a book to log it, using the date and rating below.</p>
                   <div className="cover-cascade">
                     {recentEditions.map((e) => (
                       <button key={e.id} type="button" className="cascade-item" onClick={() => readAgain(e)}>
@@ -574,16 +574,27 @@ function LogReadingView({
               <button type="button" className="back-btn" onClick={() => setMode('none')}>
                 <span aria-hidden="true">←</span> Back
               </button>
-              <input placeholder="Title" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
-              <input placeholder="Author" value={manualAuthor} onChange={(e) => setManualAuthor(e.target.value)} />
-              <input placeholder="ISBN (optional)" value={manualIsbn} onChange={(e) => setManualIsbn(e.target.value)} />
-              {!capturingCover && coverPhotoPreviewUrl && (
-                <div className="search-result">
-                  <BookCover src={coverPhotoPreviewUrl} title={manualTitle || 'Cover photo'} size="sm" />
-                  <span>Cover photo added</span>
-                </div>
-              )}
-              {coverPhotoControl}
+              <div className="manual-entry">
+                <label>
+                  <span className="field-label">Title</span>
+                  <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
+                </label>
+                <label>
+                  <span className="field-label">Author</span>
+                  <input value={manualAuthor} onChange={(e) => setManualAuthor(e.target.value)} />
+                </label>
+                <label>
+                  <span className="field-label">ISBN (optional)</span>
+                  <input value={manualIsbn} onChange={(e) => setManualIsbn(e.target.value)} />
+                </label>
+                {!capturingCover && coverPhotoPreviewUrl && (
+                  <div className="search-result">
+                    <BookCover src={coverPhotoPreviewUrl} title={manualTitle || 'Cover photo'} size="sm" />
+                    <span>Cover photo added</span>
+                  </div>
+                )}
+                {coverPhotoControl}
+              </div>
             </div>
           )}
         </div>

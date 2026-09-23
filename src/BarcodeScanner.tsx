@@ -85,9 +85,11 @@ export function BarcodeScanner({ onDetect, onClose }: { onDetect: (isbn: string)
 
   return (
     <div className="scanner">
+      <button type="button" className="back-btn" onClick={onClose}>
+        <span aria-hidden="true">←</span> Back
+      </button>
       <video ref={videoRef} muted playsInline className="scanner-video" />
       {error && <p className="muted">{error}</p>}
-      <button type="button" onClick={onClose}>Cancel</button>
     </div>
   )
 }
