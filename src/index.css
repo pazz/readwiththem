@@ -1,0 +1,788 @@
+:root {
+  --color-bg: #f6f3ec;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f0ece2;
+  --color-border: #e3ddd0;
+  --color-text: #1c1c1a;
+  --color-text-muted: #63625b;
+  --color-primary: #2c5f4f;
+  --color-primary-hover: #234c40;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: #e4ede9;
+  --color-danger: #a8422c;
+  --color-star: #d99a00;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(20, 20, 15, 0.06), 0 1px 1px rgba(20, 20, 15, 0.04);
+  --shadow-md: 0 4px 16px rgba(20, 20, 15, 0.08), 0 1px 3px rgba(20, 20, 15, 0.06);
+  --nav-height: 64px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14161a;
+    --color-surface: #1f2226;
+    --color-surface-alt: #262a2f;
+    --color-border: #34383e;
+    --color-text: #f0efe9;
+    --color-text-muted: #a3a299;
+    --color-primary: #57a98c;
+    --color-primary-hover: #6cbb9f;
+    --color-primary-contrast: #0c130f;
+    --color-primary-soft: #22322c;
+    --color-danger: #d97a63;
+    --color-star: #e8b647;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.1rem 1rem calc(var(--nav-height) + 1.5rem);
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
+}
+
+h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+}
+
+/* Bottom tab bar — the standard mobile/PWA navigation pattern: thumb-reachable,
+   frees vertical space, and reads as "app chrome" rather than a row of form
+   buttons competing with the page's own buttons. */
+nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: var(--nav-height);
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.4rem;
+}
+
+nav .nav-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+/* Emoji ignore `color`, so the active tab can't rely on tinting alone: it gets a
+   bar along its top edge and a tinted panel as well. */
+nav button[aria-current='true'] {
+  color: var(--color-primary);
+  font-weight: 700;
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 3px 0 var(--color-primary);
+}
+
+input, select, textarea, button {
+  font-size: 1rem;
+  font-family: inherit;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+input, select, textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+button {
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.card + .card {
+  margin-top: 0.9rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.submit-btn {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border: none;
+  padding: 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+}
+
+.submit-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-primary);
+}
+
+.search-result {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  background: var(--color-surface);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.search-result:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.cover-sm {
+  width: 32px;
+  height: 48px;
+}
+
+.cover-lg {
+  width: 84px;
+  height: 126px;
+}
+
+img.cover-sm,
+img.cover-lg {
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 0.65rem;
+  text-align: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.child-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.child-list button {
+  width: 100%;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 0.7rem 0.8rem;
+}
+
+.child-list button.child-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-weight: 600;
+}
+
+.link-btn {
+  border: none;
+  padding: 0;
+  background: none;
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.link-btn.danger {
+  color: var(--color-danger);
+}
+
+/* A contextual "go back" affordance — its own small pill, not a hyperlink,
+   since it isn't inline with surrounding text the way "switch child" is. */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  /* Hugs its content even inside a flex column (the scanner), where the
+     default stretch alignment would otherwise pull it to full width. */
+  align-self: flex-start;
+  gap: 0.3rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.7rem;
+}
+
+.back-btn span {
+  font-size: 1rem;
+}
+
+.back-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Labelled, full-width fields matching the Date/Rating row below, rather than
+   bare placeholder-only inputs at their intrinsic width. */
+.manual-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.manual-entry label {
+  display: block;
+}
+
+.manual-entry input {
+  width: 100%;
+}
+
+/* Keeps the cover-photo link left-aligned with the fields, rather than being
+   stretched and centre-aligned by the flex column. */
+.manual-entry .link-btn {
+  align-self: flex-start;
+}
+
+.book-entry-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.mode-primary {
+  font-size: 1rem;
+  padding: 1.1rem 0.5rem;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border: none;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.mode-primary span {
+  font-size: 1.3rem;
+}
+
+.scanner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scanner-video {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: black;
+}
+
+.cover-capture-frame {
+  position: relative;
+  /* Clips the guide's spotlight shadow to the video, so it doesn't bleed over
+     the rest of the page. */
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+/* object-fit: cover only crops (rather than just letterboxing) when the box's
+   own aspect ratio differs from the camera feed's — this fixes that ratio so
+   there is always a well-defined crop for the guide rectangle to describe. */
+.cover-capture-video {
+  max-height: none;
+  aspect-ratio: 3 / 4;
+}
+
+.cover-guide {
+  position: absolute;
+  border: 2px solid white;
+  border-radius: 6px;
+  /* A spotlight cutout: an oversized shadow outside the border, transparent
+     inside it, without needing separate mask elements. */
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.filter-field {
+  display: block;
+  margin-bottom: 0.7rem;
+}
+
+.filter-field select {
+  width: 100%;
+}
+
+.filter-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.filter-dates label {
+  display: block;
+}
+
+.filter-dates input {
+  width: 100%;
+}
+
+.preset-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.preset-row button {
+  flex: 1;
+  padding: 0.5rem 0.3rem;
+  font-size: 0.85rem;
+}
+
+.export-summary {
+  margin: 0.8rem 0 0;
+}
+
+.print-btn {
+  display: block;
+  width: 100%;
+}
+
+.print-hint {
+  margin: 0.5rem 0 0;
+}
+
+.download-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.download-row + .download-row {
+  margin-top: 1rem;
+}
+
+.download-row button {
+  width: 100%;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 0.7rem;
+}
+
+.segmented button {
+  flex: 1;
+  padding: 0.55rem 0.3rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.8rem;
+}
+
+.checkbox-row input {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  accent-color: var(--color-primary);
+}
+
+.segmented button {
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
+}
+
+.segmented button.active {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+/* .print-page represents actual paper: always white/dark-text regardless of the
+   app's own light/dark theme, since that's what will physically print. */
+.print-page {
+  margin-top: 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.print-page.list-mode {
+  padding: 1rem;
+}
+
+/* The canvas carries the A4 shape itself, so the frame just wraps it. */
+.print-page.poster-mode {
+  padding: 0;
+  line-height: 0;
+}
+
+.export-list {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+}
+
+.export-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e2d8;
+}
+
+.export-list-row:last-child {
+  border-bottom: none;
+}
+
+.export-list-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.export-list.plain .export-list-row {
+  padding: 0.35rem 0;
+}
+
+/* Count hints always print on white paper, so they don't follow the app theme. */
+.cover-with-count {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.count-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  background: #2c5f4f;
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 0 5px;
+}
+
+.count-inline {
+  color: #2c5f4f;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.poster-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.secondary-print {
+  margin-top: 0.5rem;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  @page poster {
+    size: A4;
+    margin: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #poster-print-area,
+  #poster-print-area * {
+    visibility: visible;
+  }
+  #poster-print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: none;
+  }
+  /* Sized in mm against the paper, never vh — vh resolves to the screen
+     viewport when printing and was what pushed the poster onto a second page.
+     The height is shaved marginally under 297mm so sub-pixel rounding can
+     never spill a second sheet. */
+  #poster-print-area.poster-mode {
+    page: poster;
+    width: 210mm;
+    height: 296.5mm;
+    overflow: hidden;
+  }
+  #poster-print-area.poster-mode canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.session-row {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.session-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0.2rem;
+}
+
+.session-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.cover-cascade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.7rem;
+}
+
+.cascade-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.cascade-item img.cover-lg,
+.cascade-item .cover-placeholder {
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease;
+}
+
+.cascade-item:active img.cover-lg,
+.cascade-item:active .cover-placeholder {
+  transform: scale(0.95);
+}
+
+.cascade-item span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-height) + 1rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: calc(100% - 2rem);
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  padding: 0.65rem 1.2rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  animation: toast-in 0.18s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+  .cascade-item:active img.cover-lg,
+  .cascade-item:active .cover-placeholder {
+    transform: none;
+  }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.field-row > label,
+.field-row > div {
+  min-width: 0;
+}
+
+.field-row input[type='date'] {
+  width: 100%;
+}
+
+.star-rating {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.star {
+  background: none;
+  border: none;
+  /* Narrow horizontally so five fit beside the date, but kept tall enough to
+     stay a comfortable tap target. */
+  padding: 0.55rem 0.06rem;
+  font-size: 1.45rem;
+  line-height: 1;
+  color: var(--color-border);
+  transition: color 0.1s ease, transform 0.1s ease;
+}
+
+.star.filled {
+  color: var(--color-star);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
