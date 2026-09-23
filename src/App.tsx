@@ -323,6 +323,7 @@ function LogReadingView({
   const [coverPhotoBlob, setCoverPhotoBlob] = useState<Blob | null>(null)
   const [coverPhotoPreviewUrl, setCoverPhotoPreviewUrl] = useState<string | null>(null)
   const [capturingCover, setCapturingCover] = useState(false)
+  const [againNote, setAgainNote] = useState('')
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
@@ -354,11 +355,15 @@ function LogReadingView({
     .map(([editionId]) => editions.find((e) => e.id === editionId))
     .filter((e): e is Edition => !!e)
 
-  // One tap logs the book for today — no form, no second step.
+  // One tap logs the book for today — no form, no second step. Whatever's in
+  // the note field at the moment of tapping goes on that entry, then clears,
+  // so it doesn't linger onto the next book tapped afterwards.
   const readAgain = async (edition: Edition) => {
     if (!activeChild) return
+    const note = againNote.trim() || undefined
     try {
-      await storage.logReading({ childId: activeChild.id, editionId: edition.id, date: toISODate(new Date()) })
+      await storage.logReading({ childId: activeChild.id, editionId: edition.id, date: toISODate(new Date()), note })
+      setAgainNote('')
       confirm(`Logged ${edition.title}`)
       onChange()
     } catch (err) {
@@ -523,10 +528,18 @@ function LogReadingView({
             <BarcodeScanner onDetect={handleScanned} onClose={() => setMode('none')} />
           ) : mode === 'again' ? (
             <div>
-              <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
+              <button type="button" className="back-btn" onClick={() => setMode('none')}>
+                <span aria-hidden="true">←</span> Back
+              </button>
               {recentEditions.length > 0 ? (
                 <>
                   <p className="muted">Tap a book to log it again for today.</p>
+                  <input
+                    className="again-note"
+                    placeholder="Add a note for today's read (optional)"
+                    value={againNote}
+                    onChange={(e) => setAgainNote(e.target.value)}
+                  />
                   <div className="cover-cascade">
                     {recentEditions.map((e) => (
                       <button key={e.id} type="button" className="cascade-item" onClick={() => readAgain(e)}>
@@ -542,7 +555,9 @@ function LogReadingView({
             </div>
           ) : mode === 'search' ? (
             <div>
-              <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
+              <button type="button" className="back-btn" onClick={() => setMode('none')}>
+                <span aria-hidden="true">←</span> Back
+              </button>
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <input placeholder="Search title or author" value={query} onChange={(e) => setQuery(e.target.value)} />
                 <button type="button" onClick={runSearch} disabled={searching}>{searching ? 'Searching…' : 'Search'}</button>
@@ -556,7 +571,9 @@ function LogReadingView({
             </div>
           ) : (
             <div>
-              <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
+              <button type="button" className="back-btn" onClick={() => setMode('none')}>
+                <span aria-hidden="true">←</span> Back
+              </button>
               <input placeholder="Title" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
               <input placeholder="Author" value={manualAuthor} onChange={(e) => setManualAuthor(e.target.value)} />
               <input placeholder="ISBN (optional)" value={manualIsbn} onChange={(e) => setManualIsbn(e.target.value)} />

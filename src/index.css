@@ -287,6 +287,48 @@ img.cover-lg {
   color: var(--color-danger);
 }
 
+/* A contextual "go back" affordance — its own small pill, not a hyperlink,
+   since it isn't inline with surrounding text the way "switch child" is. */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.7rem;
+}
+
+.back-btn span {
+  font-size: 1rem;
+}
+
+.back-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Deliberately understated: a dashed, muted-text field rather than a normal
+   input, so it reads as an optional aside sitting on top of the cascade
+   rather than a form field demanding to be filled in. */
+.again-note {
+  width: 100%;
+  margin-bottom: 0.8rem;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.again-note:focus-visible {
+  color: var(--color-text);
+  border-style: solid;
+  border-color: var(--color-primary);
+}
+
 .book-entry-modes {
   display: grid;
   grid-template-columns: 1fr 1fr;
