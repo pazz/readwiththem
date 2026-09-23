@@ -329,6 +329,32 @@ img.cover-lg {
   background: black;
 }
 
+.cover-capture-frame {
+  position: relative;
+  /* Clips the guide's spotlight shadow to the video, so it doesn't bleed over
+     the rest of the page. */
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+/* object-fit: cover only crops (rather than just letterboxing) when the box's
+   own aspect ratio differs from the camera feed's — this fixes that ratio so
+   there is always a well-defined crop for the guide rectangle to describe. */
+.cover-capture-video {
+  max-height: none;
+  aspect-ratio: 3 / 4;
+}
+
+.cover-guide {
+  position: absolute;
+  border: 2px solid white;
+  border-radius: 6px;
+  /* A spotlight cutout: an oversized shadow outside the border, transparent
+     inside it, without needing separate mask elements. */
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
 .filter-field {
   display: block;
   margin-bottom: 0.7rem;
