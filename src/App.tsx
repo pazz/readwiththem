@@ -5,6 +5,7 @@ import { searchCatalogue, lookupISBN, type BookSearchResult } from './catalogue'
 import { BarcodeScanner } from './BarcodeScanner'
 import { CoverCapture } from './CoverCapture'
 import { renderPoster, type PosterTile } from './poster'
+import { Analytics } from '@vercel/analytics/react'
 
 function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
   const [failed, setFailed] = useState(false)
@@ -952,6 +953,7 @@ function ExportView({
           <span className="muted">Everything in this browser, ignoring the selection above. This is your backup — the data lives nowhere else.</span>
         </div>
       </div>
+      <Analytics />
     </div>
   )
 }
