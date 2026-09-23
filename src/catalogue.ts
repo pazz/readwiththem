@@ -15,9 +15,15 @@ export async function searchCatalogue(query: string): Promise<BookSearchResult[]
   const primary = primaryResult.status === 'fulfilled' ? primaryResult.value : []
   const gapFiller = gapFillerResult.status === 'fulfilled' ? gapFillerResult.value : []
 
+  // A coverless Open Library record must not shadow a Google record that has
+  // one — fill in the missing field rather than just deciding the whole result
+  // is a duplicate and discarding it.
+  const gapFillerByKey = new Map(gapFiller.map((r) => [dedupeKey(r), r]))
+  const merged = primary.map((r) => (r.coverUrl ? r : { ...r, coverUrl: gapFillerByKey.get(dedupeKey(r))?.coverUrl }))
+
   const seen = new Set(primary.map(dedupeKey))
   const extra = gapFiller.filter((r) => !seen.has(dedupeKey(r)))
-  return [...primary, ...extra]
+  return [...merged, ...extra]
 }
 
 export async function lookupISBN(isbn: string): Promise<BookSearchResult | null> {

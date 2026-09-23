@@ -3,6 +3,7 @@ import type { Child, Edition, ReadingSession } from './types'
 import * as storage from './storage'
 import { searchCatalogue, lookupISBN, type BookSearchResult } from './catalogue'
 import { BarcodeScanner } from './BarcodeScanner'
+import { CoverCapture } from './CoverCapture'
 import { renderPoster, type PosterTile } from './poster'
 
 function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
@@ -16,6 +17,13 @@ function BookCover({ src, title, size }: { src: string | undefined; title: strin
     )
   }
   return <img src={src} alt={title} className={sizeClass} onError={() => setFailed(true)} />
+}
+
+// A parent-photographed cover always wins over a catalogue one: it's their own
+// copy, and it's the only option at all for a book the catalogue has no cover for.
+function resolveCoverUrl(coverPhotoUrls: Map<string, string>, edition: Edition | undefined): string | undefined {
+  if (!edition) return undefined
+  return coverPhotoUrls.get(edition.id) ?? edition.coverUrl
 }
 
 function PosterCanvas({ tiles, label, showCounts }: { tiles: PosterTile[]; label: string; showCounts: boolean }) {
@@ -112,16 +120,30 @@ export default function App() {
   const [editions, setEditions] = useState<Edition[]>([])
   const [sessions, setSessions] = useState<ReadingSession[]>([])
   const [activeChildId, setActiveChildId] = useState(loadActiveChildId)
+  const [coverPhotoUrls, setCoverPhotoUrls] = useState<Map<string, string>>(new Map())
 
   const reload = async () => {
-    const [c, e, s] = await Promise.all([storage.listChildren(), storage.listEditions(), storage.listSessions()])
+    const [c, e, s, photos] = await Promise.all([
+      storage.listChildren(),
+      storage.listEditions(),
+      storage.listSessions(),
+      storage.listCoverPhotos(),
+    ])
     setChildren(c)
     setEditions(e)
     setSessions(s)
+    // Object URLs are per-blob handles into browser memory — replace the whole
+    // set on reload rather than accumulating, or they'd leak for the session's
+    // lifetime every time a new photo is added.
+    setCoverPhotoUrls((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url))
+      return new Map(photos.map((p) => [p.editionId, URL.createObjectURL(p.blob)]))
+    })
   }
 
   useEffect(() => {
     reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const chooseChild = (id: string) => {
@@ -174,6 +196,7 @@ export default function App() {
           activeChild={activeChild}
           editions={editions}
           sessions={sessions}
+          coverPhotoUrls={coverPhotoUrls}
           onChange={reload}
           onSwitchToChildren={() => setTab('children')}
         />
@@ -183,13 +206,22 @@ export default function App() {
           sessions={sessions}
           children={children}
           editions={editions}
+          coverPhotoUrls={coverPhotoUrls}
           onDelete={async (id) => {
             await storage.deleteSession(id)
             await reload()
           }}
         />
       )}
-      {tab === 'export' && <ExportView children={children} editions={editions} sessions={sessions} activeChildId={activeChildId} />}
+      {tab === 'export' && (
+        <ExportView
+          children={children}
+          editions={editions}
+          sessions={sessions}
+          activeChildId={activeChildId}
+          coverPhotoUrls={coverPhotoUrls}
+        />
+      )}
     </div>
   )
 }
@@ -263,12 +295,14 @@ function LogReadingView({
   activeChild,
   editions,
   sessions,
+  coverPhotoUrls,
   onChange,
   onSwitchToChildren,
 }: {
   activeChild: Child | undefined
   editions: Edition[]
   sessions: ReadingSession[]
+  coverPhotoUrls: Map<string, string>
   onChange: () => void
   onSwitchToChildren: () => void
 }) {
@@ -286,8 +320,23 @@ function LogReadingView({
   const [status, setStatus] = useState('')
   const [toast, setToast] = useState('')
   const toastTimer = useRef<number>()
+  const [coverPhotoBlob, setCoverPhotoBlob] = useState<Blob | null>(null)
+  const [coverPhotoPreviewUrl, setCoverPhotoPreviewUrl] = useState<string | null>(null)
+  const [capturingCover, setCapturingCover] = useState(false)
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+
+  // The just-captured photo needs its own object URL for an immediate preview,
+  // separate from coverPhotoUrls (which only covers already-saved editions).
+  useEffect(() => {
+    if (!coverPhotoBlob) {
+      setCoverPhotoPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(coverPhotoBlob)
+    setCoverPhotoPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [coverPhotoBlob])
 
   const confirm = (message: string) => {
     setToast(message)
@@ -369,6 +418,7 @@ function LogReadingView({
         isbn: 'isbn' in book ? book.isbn : undefined,
         source: selected ? 'openlibrary' : 'manual',
       })
+      if (coverPhotoBlob) await storage.saveCoverPhoto(edition.id, coverPhotoBlob)
       await storage.logReading({
         childId: activeChild.id,
         editionId: edition.id,
@@ -382,6 +432,7 @@ function LogReadingView({
       setManualTitle('')
       setManualAuthor('')
       setManualIsbn('')
+      setCoverPhotoBlob(null)
       setNote('')
       setRating('')
       setResults([])
@@ -405,6 +456,22 @@ function LogReadingView({
     )
   }
 
+  // Shared between the "picked a book" and "manual entry" branches below, so a
+  // coverless book gets the same capture affordance regardless of how it was added.
+  const coverPhotoControl = capturingCover ? (
+    <CoverCapture
+      onCapture={(blob) => {
+        setCoverPhotoBlob(blob)
+        setCapturingCover(false)
+      }}
+      onClose={() => setCapturingCover(false)}
+    />
+  ) : (
+    <button type="button" className="link-btn" onClick={() => setCapturingCover(true)}>
+      📷 {coverPhotoBlob ? 'Retake cover photo' : 'Add a cover photo'}
+    </button>
+  )
+
   return (
     <div>
       <form className="card" onSubmit={submit}>
@@ -416,19 +483,27 @@ function LogReadingView({
         <div>
           <span className="field-label">Book</span>
           {selected ? (
-            <div className="search-result">
-              <BookCover src={selected.coverUrl} title={selected.title} size="sm" />
-              <span>{selected.title} — {selected.author}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelected(null)
-                  setMode('none')
-                }}
-              >
-                Change
-              </button>
-            </div>
+            capturingCover ? (
+              coverPhotoControl
+            ) : (
+              <>
+                <div className="search-result">
+                  <BookCover src={coverPhotoPreviewUrl ?? selected.coverUrl} title={selected.title} size="sm" />
+                  <span>{selected.title} — {selected.author}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected(null)
+                      setMode('none')
+                      setCoverPhotoBlob(null)
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+                {coverPhotoControl}
+              </>
+            )
           ) : mode === 'none' ? (
             <div className="book-entry-modes">
               <button type="button" className="mode-primary" onClick={() => setMode('again')}>
@@ -455,7 +530,7 @@ function LogReadingView({
                   <div className="cover-cascade">
                     {recentEditions.map((e) => (
                       <button key={e.id} type="button" className="cascade-item" onClick={() => readAgain(e)}>
-                        <BookCover src={e.coverUrl} title={e.title} size="lg" />
+                        <BookCover src={resolveCoverUrl(coverPhotoUrls, e)} title={e.title} size="lg" />
                         <span>{e.title}</span>
                       </button>
                     ))}
@@ -485,6 +560,13 @@ function LogReadingView({
               <input placeholder="Title" value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} />
               <input placeholder="Author" value={manualAuthor} onChange={(e) => setManualAuthor(e.target.value)} />
               <input placeholder="ISBN (optional)" value={manualIsbn} onChange={(e) => setManualIsbn(e.target.value)} />
+              {!capturingCover && coverPhotoPreviewUrl && (
+                <div className="search-result">
+                  <BookCover src={coverPhotoPreviewUrl} title={manualTitle || 'Cover photo'} size="sm" />
+                  <span>Cover photo added</span>
+                </div>
+              )}
+              {coverPhotoControl}
             </div>
           )}
         </div>
@@ -519,11 +601,13 @@ function HistoryView({
   sessions,
   children,
   editions,
+  coverPhotoUrls,
   onDelete,
 }: {
   sessions: ReadingSession[]
   children: Child[]
   editions: Edition[]
+  coverPhotoUrls: Map<string, string>
   onDelete: (id: string) => void
 }) {
   const childById = new Map(children.map((c) => [c.id, c]))
@@ -545,7 +629,7 @@ function HistoryView({
         const title = edition?.title ?? 'Unknown book'
         return (
           <div key={s.id} className="session-row">
-            <BookCover src={edition?.coverUrl} title={title} size="sm" />
+            <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
             <div className="session-row-body">
               <div className="session-row-header">
                 <div>
@@ -643,11 +727,13 @@ function ExportView({
   editions,
   sessions,
   activeChildId,
+  coverPhotoUrls,
 }: {
   children: Child[]
   editions: Edition[]
   sessions: ReadingSession[]
   activeChildId: string
+  coverPhotoUrls: Map<string, string>
 }) {
   // One selection drives every filtered export, rather than each output carrying
   // its own copy of the same child + date-range controls.
@@ -795,7 +881,7 @@ function ExportView({
                     <li key={editionId} className="export-list-row">
                       {exportStyle === 'pretty' && (
                         <span className="cover-with-count">
-                          <BookCover src={edition?.coverUrl} title={title} size="sm" />
+                          <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
                           {showCounts && <span className="count-badge">×{count}</span>}
                         </span>
                       )}
@@ -816,7 +902,7 @@ function ExportView({
           // One tile per distinct book, not per reading: re-reads would otherwise
           // repeat the same cover and shrink every tile for no extra information.
           <PosterCanvas
-            tiles={books.map((b) => ({ coverUrl: editionById.get(b.editionId)?.coverUrl, count: b.count }))}
+            tiles={books.map((b) => ({ coverUrl: resolveCoverUrl(coverPhotoUrls, editionById.get(b.editionId)), count: b.count }))}
             label={rangeLabel}
             showCounts={showCounts}
           />

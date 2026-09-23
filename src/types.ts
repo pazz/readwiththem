@@ -33,3 +33,11 @@ export interface ChangeLogEntry {
   timestamp: string
   payload: unknown
 }
+
+// A photo the parent took of their own copy's cover, for a book the catalogue
+// has no cover image for. Kept separate from Edition (rather than a field on
+// it) because a Blob can't survive JSON.stringify — see exportBackupJSON.
+export interface CoverPhoto {
+  editionId: string
+  blob: Blob
+}

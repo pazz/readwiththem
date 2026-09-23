@@ -2,7 +2,7 @@
 // Swapping IndexedDB for a networked adapter later means changing this file, not the UI.
 import { db } from './db'
 import { generateId } from './id'
-import type { Child, Edition, ReadingSession } from './types'
+import type { Child, Edition, ReadingSession, CoverPhoto } from './types'
 
 async function logChange(entity: 'child' | 'edition' | 'session', entityId: string, op: 'create' | 'update' | 'delete', payload: unknown) {
   await db.changeLog.add({ entity, entityId, op, timestamp: new Date().toISOString(), payload })
@@ -64,14 +64,40 @@ export async function deleteSession(id: string): Promise<void> {
   await logChange('session', id, 'delete', { id })
 }
 
+export async function saveCoverPhoto(editionId: string, blob: Blob): Promise<void> {
+  await db.coverPhotos.put({ editionId, blob })
+  await logChange('edition', editionId, 'update', { coverPhoto: true })
+}
+
+export function listCoverPhotos(): Promise<CoverPhoto[]> {
+  return db.coverPhotos.toArray()
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary)
+}
+
 export async function exportBackupJSON(): Promise<string> {
-  const [children, editions, sessions, changeLog] = await Promise.all([
+  const [children, editions, sessions, changeLog, coverPhotos] = await Promise.all([
     db.children.toArray(),
     db.editions.toArray(),
     db.sessions.toArray(),
     db.changeLog.toArray(),
+    db.coverPhotos.toArray(),
   ])
-  return JSON.stringify({ exportedAt: new Date().toISOString(), children, editions, sessions, changeLog }, null, 2)
+  // A Blob can't survive JSON.stringify (it silently becomes "{}"), which would
+  // quietly drop every photographed cover from the one backup this app has.
+  const coverPhotosEncoded = await Promise.all(
+    coverPhotos.map(async (p) => ({ editionId: p.editionId, mimeType: p.blob.type, base64: await blobToBase64(p.blob) })),
+  )
+  return JSON.stringify(
+    { exportedAt: new Date().toISOString(), children, editions, sessions, changeLog, coverPhotos: coverPhotosEncoded },
+    null,
+    2,
+  )
 }
 
 export function sessionsToCSV(sessions: ReadingSession[], children: Child[], editions: Edition[]): string {
