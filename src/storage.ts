@@ -23,6 +23,14 @@ export async function addEdition(edition: Omit<Edition, 'id' | 'createdAt'>): Pr
   if (edition.isbn) {
     const existing = await db.editions.where('isbn').equals(edition.isbn).first()
     if (existing) return existing
+  } else {
+    // Without an ISBN there is no key to match on, so fall back to title+author:
+    // otherwise re-logging the same manual entry mints a new edition each time
+    // and the same book shows up repeatedly as if it were several books.
+    const existing = await db.editions
+      .filter((e) => !e.isbn && e.title === edition.title && e.author === edition.author)
+      .first()
+    if (existing) return existing
   }
   const full: Edition = { ...edition, id: generateId(), createdAt: new Date().toISOString() }
   await db.editions.add(full)

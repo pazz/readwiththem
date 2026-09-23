@@ -581,38 +581,80 @@ img.cover-lg {
   gap: 0.5rem;
 }
 
-.recent-books-row {
-  display: flex;
-  margin-top: 0.6rem;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.2rem;
+.cover-cascade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.7rem;
 }
 
-.recent-book {
+.cascade-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  width: 70px;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
   font-size: 0.7rem;
   text-align: center;
-  padding: 0.4rem;
 }
 
-.recent-book:hover {
-  border-color: var(--color-primary);
+.cascade-item img.cover-lg,
+.cascade-item .cover-placeholder {
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease;
 }
 
-.recent-book span {
+.cascade-item:active img.cover-lg,
+.cascade-item:active .cover-placeholder {
+  transform: scale(0.95);
+}
+
+.cascade-item span {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-height) + 1rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: calc(100% - 2rem);
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  padding: 0.65rem 1.2rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  animation: toast-in 0.18s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+  .cascade-item:active img.cover-lg,
+  .cascade-item:active .cover-placeholder {
+    transform: none;
+  }
 }
 
 .field-row {

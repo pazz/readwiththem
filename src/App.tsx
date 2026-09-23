@@ -276,7 +276,7 @@ function LogReadingView({
   const [results, setResults] = useState<BookSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState<BookSearchResult | null>(null)
-  const [mode, setMode] = useState<'none' | 'scan' | 'recents' | 'search' | 'manual'>('none')
+  const [mode, setMode] = useState<'none' | 'scan' | 'again' | 'search' | 'manual'>('none')
   const [manualTitle, setManualTitle] = useState('')
   const [manualAuthor, setManualAuthor] = useState('')
   const [manualIsbn, setManualIsbn] = useState('')
@@ -284,6 +284,16 @@ function LogReadingView({
   const [note, setNote] = useState('')
   const [rating, setRating] = useState('')
   const [status, setStatus] = useState('')
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<number>()
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+
+  const confirm = (message: string) => {
+    setToast(message)
+    window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(''), 2200)
+  }
 
   const latestDateByEdition = new Map<string, string>()
   for (const s of sessions) {
@@ -292,9 +302,21 @@ function LogReadingView({
   }
   const recentEditions = Array.from(latestDateByEdition.entries())
     .sort((a, b) => b[1].localeCompare(a[1]))
-    .slice(0, 8)
     .map(([editionId]) => editions.find((e) => e.id === editionId))
     .filter((e): e is Edition => !!e)
+
+  // One tap logs the book for today — no form, no second step.
+  const readAgain = async (edition: Edition) => {
+    if (!activeChild) return
+    try {
+      await storage.logReading({ childId: activeChild.id, editionId: edition.id, date: toISODate(new Date()) })
+      confirm(`Logged ${edition.title}`)
+      onChange()
+    } catch (err) {
+      console.error('readAgain failed', err)
+      setStatus(`Could not save: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   const handleScanned = async (isbn: string) => {
     setStatus('Looking up scanned ISBN…')
@@ -364,7 +386,8 @@ function LogReadingView({
       setRating('')
       setResults([])
       setQuery('')
-      setStatus('Logged.')
+      setStatus('')
+      confirm(`Logged ${book.title}`)
       onChange()
     } catch (err) {
       console.error('logReading failed', err)
@@ -408,8 +431,8 @@ function LogReadingView({
             </div>
           ) : mode === 'none' ? (
             <div className="book-entry-modes">
-              <button type="button" className="mode-primary" onClick={() => setMode('recents')}>
-                <span aria-hidden="true">🔁</span> Recents
+              <button type="button" className="mode-primary" onClick={() => setMode('again')}>
+                <span aria-hidden="true">🔁</span> Read again
               </button>
               <button type="button" className="mode-primary" onClick={() => setMode('scan')}>
                 <span aria-hidden="true">📖</span> Scan barcode
@@ -423,25 +446,23 @@ function LogReadingView({
             </div>
           ) : mode === 'scan' ? (
             <BarcodeScanner onDetect={handleScanned} onClose={() => setMode('none')} />
-          ) : mode === 'recents' ? (
+          ) : mode === 'again' ? (
             <div>
               <button type="button" className="link-btn" onClick={() => setMode('none')}>‹ back</button>
               {recentEditions.length > 0 ? (
-                <div className="recent-books-row">
-                  {recentEditions.map((e) => (
-                    <button
-                      key={e.id}
-                      type="button"
-                      className="recent-book"
-                      onClick={() => setSelected({ title: e.title, author: e.author, isbn: e.isbn, coverUrl: e.coverUrl })}
-                    >
-                      <BookCover src={e.coverUrl} title={e.title} size="sm" />
-                      <span>{e.title}</span>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <p className="muted">Tap a book to log it again for today.</p>
+                  <div className="cover-cascade">
+                    {recentEditions.map((e) => (
+                      <button key={e.id} type="button" className="cascade-item" onClick={() => readAgain(e)}>
+                        <BookCover src={e.coverUrl} title={e.title} size="lg" />
+                        <span>{e.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <p className="muted">No recently read books yet — try Search or Scan instead.</p>
+                <p className="muted">No books to read again yet — try Search or Scan instead.</p>
               )}
             </div>
           ) : mode === 'search' ? (
@@ -484,6 +505,12 @@ function LogReadingView({
         <button className="submit-btn" type="submit">Log reading</button>
         {status && <p className="muted">{status}</p>}
       </form>
+
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          <span aria-hidden="true">✓</span> {toast}
+        </div>
+      )}
     </div>
   )
 }
