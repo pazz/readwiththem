@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Child, Edition, ReadingSession } from './types'
 import * as storage from './storage'
 import { searchCatalogue, lookupISBN, type BookSearchResult } from './catalogue'
 import { BarcodeScanner } from './BarcodeScanner'
 import { CoverCapture } from './CoverCapture'
-import { renderPoster, type PosterTile } from './poster'
+import { renderListImage, type ListImageRow } from './listImage'
+import { booksToMarkdown } from './exportText'
 
 function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
   const [failed, setFailed] = useState(false)
@@ -24,61 +26,6 @@ function BookCover({ src, title, size }: { src: string | undefined; title: strin
 function resolveCoverUrl(coverPhotoUrls: Map<string, string>, edition: Edition | undefined): string | undefined {
   if (!edition) return undefined
   return coverPhotoUrls.get(edition.id) ?? edition.coverUrl
-}
-
-function PosterCanvas({ tiles, label, showCounts }: { tiles: PosterTile[]; label: string; showCounts: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [status, setStatus] = useState<'rendering' | 'ready' | 'error'>('rendering')
-  const signature = `${label}::${showCounts}::${tiles.map((t) => `${t.coverUrl}~${t.count}`).join('|')}`
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    let cancelled = false
-    setStatus('rendering')
-    renderPoster(canvas, tiles, label, { showCounts })
-      .then(() => !cancelled && setStatus('ready'))
-      .catch((err) => {
-        console.error('poster render failed', err)
-        if (!cancelled) setStatus('error')
-      })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature])
-
-  const downloadImage = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    try {
-      canvas.toBlob((blob) => {
-        if (blob) download('readwiththem-poster.png', blob, 'image/png')
-      }, 'image/png')
-    } catch (err) {
-      console.error('poster download failed', err)
-      setStatus('error')
-    }
-  }
-
-  return (
-    <>
-      <button className="submit-btn print-btn" onClick={downloadImage} disabled={status !== 'ready'}>
-        {status === 'rendering' ? 'Preparing poster…' : 'Download poster (PNG)'}
-      </button>
-      <button className="btn-secondary print-btn secondary-print" onClick={() => window.print()}>
-        Print / save as PDF
-      </button>
-      <p className="muted print-hint">
-        {status === 'error'
-          ? 'The poster could not be generated — some covers may be unavailable.'
-          : 'Always exactly one A4 page. Save the image to share it, or print it straight from your gallery.'}
-      </p>
-      <div id="poster-print-area" className="print-page poster-mode">
-        <canvas ref={canvasRef} className="poster-canvas" />
-      </div>
-    </>
-  )
 }
 
 function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -102,7 +49,26 @@ function StarRating({ value, onChange }: { value: string; onChange: (v: string) 
   )
 }
 
-type Tab = 'children' | 'log' | 'history' | 'export'
+type Tab = 'welcome' | 'children' | 'log' | 'history'
+
+// Launched from the home screen / app list, rather than a browser tab.
+function isInstalled(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
+}
+
+// Chrome and Edge fire this once, possibly before React mounts, so it is caught
+// at module load and kept for the welcome screen's "Install" button.
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+let installPrompt: InstallPromptEvent | null = null
+const installPromptListeners = new Set<() => void>()
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault()
+  installPrompt = e as InstallPromptEvent
+  installPromptListeners.forEach((fn) => fn())
+})
 
 // Which child is active is a per-device UI convenience, not household data, so it
 // lives in localStorage rather than IndexedDB.
@@ -115,7 +81,8 @@ function loadActiveChildId(): string {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>(() => (loadActiveChildId() ? 'log' : 'children'))
+  const [tab, setTab] = useState<Tab>(() => (loadActiveChildId() ? 'log' : isInstalled() ? 'children' : 'welcome'))
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [children, setChildren] = useState<Child[]>([])
   const [editions, setEditions] = useState<Edition[]>([])
   const [sessions, setSessions] = useState<ReadingSession[]>([])
@@ -130,6 +97,9 @@ export default function App() {
       storage.listCoverPhotos(),
     ])
     setChildren(c)
+    // Someone who already has children (but lost the remembered choice) has
+    // been here before: skip the welcome and let them pick.
+    if (c.length > 0) setTab((t) => (t === 'welcome' ? 'children' : t))
     setEditions(e)
     setSessions(s)
     // Object URLs are per-blob handles into browser memory — replace the whole
@@ -160,12 +130,19 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1>Read With Them</h1>
-      <nav>
-        <button aria-current={tab === 'children'} onClick={() => setTab('children')}>
-          <span className="nav-icon" aria-hidden="true">👶</span>
-          Children
+      <header className="app-header">
+        {/* Shared chrome above both tabs — greet the active child, else the default brand title */}
+        <h1>{activeChild ? `Read With ${activeChild.name}` : 'Read With Them'}</h1>
+        <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
         </button>
+      </header>
+      {tab === 'welcome' && <WelcomeView onContinue={() => setTab('children')} />}
+      {tab !== 'welcome' && (
+      <nav>
         <button aria-current={tab === 'log'} onClick={() => setTab('log')}>
           <span className="nav-icon" aria-hidden="true">📖</span>
           Log
@@ -174,20 +151,30 @@ export default function App() {
           <span className="nav-icon" aria-hidden="true">🕘</span>
           History
         </button>
-        <button aria-current={tab === 'export'} onClick={() => setTab('export')}>
-          <span className="nav-icon" aria-hidden="true">📤</span>
-          Export
-        </button>
       </nav>
+      )}
 
       {tab === 'children' && (
         <ChildrenView
           children={children}
+          sessions={sessions}
           activeChildId={activeChildId}
           onSelect={chooseChild}
           onCreated={async (id) => {
             await reload()
             chooseChild(id)
+          }}
+          onDelete={async (id) => {
+            await storage.deleteChild(id)
+            if (id === activeChildId) {
+              setActiveChildId('')
+              try {
+                localStorage.removeItem('activeChildId')
+              } catch {
+                // ignore — worst case the child picker shows instead of Log
+              }
+            }
+            await reload()
           }}
         />
       )}
@@ -206,6 +193,7 @@ export default function App() {
           sessions={sessions}
           children={children}
           editions={editions}
+          activeChildId={activeChildId}
           coverPhotoUrls={coverPhotoUrls}
           onDelete={async (id) => {
             await storage.deleteSession(id)
@@ -213,29 +201,321 @@ export default function App() {
           }}
         />
       )}
-      {tab === 'export' && (
-        <ExportView
-          children={children}
-          editions={editions}
-          sessions={sessions}
-          activeChildId={activeChildId}
-          coverPhotoUrls={coverPhotoUrls}
-        />
+
+      <Panel open={settingsOpen} onClose={() => setSettingsOpen(false)} variant="drawer" title="Settings">
+        <button
+          type="button"
+          className="settings-row"
+          onClick={() => {
+            setSettingsOpen(false)
+            setTab('children')
+          }}
+        >
+          <span>
+            <strong>Children</strong>
+            <span className="muted">Add a child, or switch who you're logging for</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
+        <button
+          type="button"
+          className="settings-row"
+          onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}
+        >
+          <span>
+            <strong>Download full backup</strong>
+            <span className="muted">Everything in this browser, as JSON. Keep it safe: the data lives nowhere else.</span>
+          </span>
+          <span aria-hidden="true">↓</span>
+        </button>
+        <RestoreBackupButton variant="settings" />
+        <button
+          type="button"
+          className="settings-row danger-row"
+          onClick={async () => {
+            if (!confirm('Delete everything in this browser — every child, book and reading? This cannot be undone. Download a backup first if you want to keep it.')) return
+            await storage.resetAllData()
+            try {
+              localStorage.removeItem('activeChildId')
+            } catch {
+              // ignore — the page is about to reload with nothing left to remember anyway
+            }
+            window.location.reload()
+          }}
+        >
+          <span>
+            <strong>Reset all data</strong>
+            <span className="muted">Deletes every child, book and reading from this browser.</span>
+          </span>
+          <span aria-hidden="true">⚠</span>
+        </button>
+        <div className="settings-about muted">
+          <strong>Privacy</strong>
+          <p>Everything you log stays in this browser. Nothing is ever sent anywhere.</p>
+          <AboutFooter />
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
+// A native modal <dialog>: focus trapping, Escape and the top layer come free.
+// "sheet" rises from the bottom on a phone and centres on wider screens; "drawer"
+// slides in from the right.
+function Panel({
+  open,
+  onClose,
+  variant,
+  title,
+  children,
+}: {
+  open: boolean
+  onClose: () => void
+  variant: 'sheet' | 'drawer'
+  title: string
+  children: React.ReactNode
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = ref.current
+    if (!dialog) return
+    if (open && !dialog.open) dialog.showModal()
+    if (!open && dialog.open) dialog.close()
+  }, [open])
+
+  return (
+    <dialog
+      ref={ref}
+      className={`panel ${variant}`}
+      aria-label={title}
+      // React bubbles the native (non-bubbling) close/click events up through the
+      // component tree, not just the DOM tree — so a Panel opened from inside another
+      // Panel's content (e.g. the Ko-fi panel from within Settings) would otherwise
+      // close its ancestor too. Only react when this exact dialog fired the event.
+      onClose={(e) => e.target === e.currentTarget && onClose()}
+      // The dialog element itself is only hit on the backdrop; its content sits
+      // in .panel-body, which covers the whole box.
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {open && (
+        <div className="panel-body">
+          <div className="panel-header">
+            <h2>{title}</h2>
+            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+              ✕
+            </button>
+          </div>
+          {children}
+        </div>
       )}
+    </dialog>
+  )
+}
+
+// The counterpart to "Download full backup" — restores one, from the settings
+// drawer or from the very first screen (moving to a new device, or recovering
+// after this one's storage was cleared). A restore replaces everything
+// currently in this browser, so it asks for confirmation before touching
+// anything, then reloads the page: simpler and more reliable than trying to
+// resync every piece of React state by hand after the swap underneath it.
+function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcome' }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [status, setStatus] = useState<'idle' | 'restoring' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  const handleFile = async (file: File) => {
+    if (!confirm('Restore this backup? Everything currently in this browser will be replaced. This cannot be undone.')) return
+    setStatus('restoring')
+    setError('')
+    try {
+      await storage.importBackupJSON(await file.text())
+      try {
+        localStorage.removeItem('activeChildId')
+      } catch {
+        // ignore — worst case the child picker shows instead of Log
+      }
+      window.location.reload()
+    } catch (err) {
+      console.error('backup restore failed', err)
+      setStatus('error')
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const trigger = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="application/json,.json"
+      className="visually-hidden"
+      onChange={(e) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+        if (file) handleFile(file)
+      }}
+    />
+  )
+
+  if (variant === 'settings') {
+    return (
+      <>
+        {trigger}
+        <button type="button" className="settings-row" disabled={status === 'restoring'} onClick={() => inputRef.current?.click()}>
+          <span>
+            <strong>Restore from backup</strong>
+            <span className="muted">
+              {status === 'restoring' ? 'Restoring…' : status === 'error' ? `Could not restore: ${error}` : 'Replaces everything above with a backup file.'}
+            </span>
+          </span>
+          <span aria-hidden="true">↑</span>
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      {trigger}
+      <button type="button" className="link-btn" disabled={status === 'restoring'} onClick={() => inputRef.current?.click()}>
+        {status === 'restoring' ? 'Restoring…' : 'Already have a backup? Restore it'}
+      </button>
+      {status === 'error' && <p className="muted">Could not restore: {error}</p>}
+    </>
+  )
+}
+
+// Shared by the welcome screen and the settings drawer — the two places this
+// unobtrusive "who made this" footer belongs.
+function AboutFooter() {
+  const [kofiOpen, setKofiOpen] = useState(false)
+  return (
+    <>
+      <p className="muted about-footer">
+        © 2026 Patrick Totzke ·{' '}
+        <button type="button" className="kofi-link" onClick={() => setKofiOpen(true)}>
+          <img src="https://storage.ko-fi.com/cdn/brandasset/v2/kofi_symbol.png" alt="" aria-hidden="true" /> Buy me
+          a coffee
+        </button>
+      </p>
+      {/* Portalled to the document body: AboutFooter is also used inside the settings
+          drawer's own <dialog>, and a nested <dialog> there would make the browser
+          close both when either one closes. */}
+      {createPortal(
+        <Panel open={kofiOpen} onClose={() => setKofiOpen(false)} variant="sheet" title="Support this app">
+          <iframe
+            id="kofiframe"
+            src="https://ko-fi.com/patricktotzke/?hidefeed=true&widget=true&embed=true&preview=true"
+            style={{ border: 'none', width: '100%', padding: '4px', background: '#f9f9f9' }}
+            height={712}
+            title="patricktotzke"
+          ></iframe>
+        </Panel>,
+        document.body,
+      )}
+    </>
+  )
+}
+
+function WelcomeView({ onContinue }: { onContinue: () => void }) {
+  const [canPrompt, setCanPrompt] = useState(!!installPrompt)
+  const [installed, setInstalled] = useState(false)
+  useEffect(() => {
+    const update = () => setCanPrompt(!!installPrompt)
+    const done = () => setInstalled(true)
+    installPromptListeners.add(update)
+    window.addEventListener('appinstalled', done)
+    return () => {
+      installPromptListeners.delete(update)
+      window.removeEventListener('appinstalled', done)
+    }
+  }, [])
+
+  const install = async () => {
+    if (!installPrompt) return
+    await installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    installPrompt = null
+    setCanPrompt(false)
+    if (outcome === 'accepted') setInstalled(true)
+  }
+
+  const ua = navigator.userAgent
+  // iPadOS reports itself as a Mac; the touch screen gives it away.
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+  const isAndroid = /Android/.test(ua)
+
+  return (
+    <div className="card welcome">
+      <p className="welcome-lead">
+        A simple, private diary of the books you read with your children. Log a book in a couple of taps, look back
+        over what you have read, and export your reading log.
+      </p>
+
+      <h3>First, add it to your home screen</h3>
+      {installed ? (
+        <p>Installed. Open <strong>Read With Them</strong> from your home screen or app list to get started.</p>
+      ) : canPrompt ? (
+        <>
+          <p>It then opens like any other app, and works without an internet connection. It's free and takes a second.</p>
+          <button type="button" className="submit-btn welcome-install" onClick={install}>
+            Install the app
+          </button>
+        </>
+      ) : isIOS ? (
+        <>
+          <ol className="welcome-steps">
+            <li>
+              Tap the <strong>Share</strong> button{' '}
+              <svg className="inline-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Share icon">
+                <path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+              </svg>{' '}
+              in the browser's toolbar. On an iPhone, it may be behind the <strong>⋯</strong> button.
+            </li>
+            <li>Scroll down and choose <strong>Add to Home Screen</strong>.</li>
+            <li>Tap <strong>Add</strong>, then open <strong>Read With Them</strong> from your home screen.</li>
+          </ol>
+          {/* iOS keeps a home-screen app's data separate from Safari's, so
+              anything entered here would not follow the user into the app. */}
+          <p className="muted">Do this before adding anything: on iPhone and iPad, what you enter in the browser stays in the browser.</p>
+        </>
+      ) : isAndroid ? (
+        <ol className="welcome-steps">
+          <li>Open the browser menu, usually <strong>⋮</strong> at the top or bottom right.</li>
+          <li>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+          <li>Open <strong>Read With Them</strong> from your home screen.</li>
+        </ol>
+      ) : (
+        <p>
+          On a computer, look for the install icon at the right-hand end of the address bar, or bookmark this page. It
+          is at its best on a phone, though, where you can scan a book's barcode.
+        </p>
+      )}
+
+      <button type="button" className="link-btn welcome-skip" onClick={onContinue}>
+        Continue in the browser instead
+      </button>
+      <p className="muted welcome-privacy">
+        No account needed. Everything stays on this device; nothing about your children or books is sent anywhere.
+      </p>
+      <AboutFooter />
     </div>
   )
 }
 
 function ChildrenView({
   children,
+  sessions,
   activeChildId,
   onSelect,
   onCreated,
+  onDelete,
 }: {
   children: Child[]
+  sessions: ReadingSession[]
   activeChildId: string
   onSelect: (id: string) => void
   onCreated: (id: string) => void
+  onDelete: (id: string) => void
 }) {
   const [name, setName] = useState('')
   const [birthYear, setBirthYear] = useState('')
@@ -259,12 +539,18 @@ function ChildrenView({
   return (
     <div>
       <div className="card">
+        <h3>{children.length === 0 ? 'Who are you reading with?' : 'Add a child'}</h3>
         <form onSubmit={submit}>
           <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} />
           <input placeholder="Birth year (optional)" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} type="number" />
           <button className="submit-btn" type="submit">Add child</button>
           {error && <p className="muted">Could not save: {error}</p>}
         </form>
+        {children.length === 0 && (
+          <div className="restore-hint">
+            <RestoreBackupButton variant="welcome" />
+          </div>
+        )}
       </div>
 
       {children.length === 0 ? (
@@ -275,15 +561,28 @@ function ChildrenView({
       ) : (
         <div className="card">
           <ul className="child-list">
-            {children.map((c) => (
-              <li key={c.id}>
-                <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
-                  {c.id === activeChildId ? '✓ ' : ''}
-                  {c.name}
-                  {c.birthYear ? ` (b. ${c.birthYear})` : ''}
-                </button>
-              </li>
-            ))}
+            {children.map((c) => {
+              const readingCount = sessions.filter((s) => s.childId === c.id).length
+              return (
+                <li key={c.id}>
+                  <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
+                    {c.id === activeChildId ? '✓ ' : ''}
+                    {c.name}
+                    {c.birthYear ? ` (b. ${c.birthYear})` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    className="link-btn danger child-remove"
+                    onClick={() => {
+                      const warning = readingCount > 0 ? ` This also removes ${readingCount} reading${readingCount === 1 ? '' : 's'} logged for them.` : ''
+                      if (confirm(`Remove ${c.name}?${warning} This cannot be undone.`)) onDelete(c.id)
+                    }}
+                  >
+                    Remove
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
@@ -346,6 +645,9 @@ function LogReadingView({
 
   const latestDateByEdition = new Map<string, string>()
   for (const s of sessions) {
+    // "Read again" offers this child's own books, not the whole household's —
+    // otherwise one child's cascade fills another's list of what to tap next.
+    if (s.childId !== activeChild?.id) continue
     const prev = latestDateByEdition.get(s.editionId)
     if (!prev || s.date > prev) latestDateByEdition.set(s.editionId, s.date)
   }
@@ -625,21 +927,41 @@ function LogReadingView({
   )
 }
 
+type RangePreset = 'week' | 'month' | 'all' | 'custom'
+
+function presetRange(preset: Exclude<RangePreset, 'custom'>): [string, string] {
+  const now = new Date()
+  if (preset === 'week') return [toISODate(startOfWeek(now)), toISODate(endOfWeek(now))]
+  if (preset === 'month') return [toISODate(startOfMonth(now)), toISODate(endOfMonth(now))]
+  return ['', '']
+}
+
 function HistoryView({
   sessions,
   children,
   editions,
+  activeChildId,
   coverPhotoUrls,
   onDelete,
 }: {
   sessions: ReadingSession[]
   children: Child[]
   editions: Edition[]
+  activeChildId: string
   coverPhotoUrls: Map<string, string>
   onDelete: (id: string) => void
 }) {
+  // One selection drives both the list and every export: the sheet exports
+  // exactly what is on screen.
+  const [filterChildId, setFilterChildId] = useState(activeChildId)
+  const [preset, setPreset] = useState<RangePreset>('month')
+  const [customFrom, setCustomFrom] = useState(() => presetRange('month')[0])
+  const [customTo, setCustomTo] = useState(() => presetRange('month')[1])
+  const [exportOpen, setExportOpen] = useState(false)
+
   const childById = new Map(children.map((c) => [c.id, c]))
   const editionById = new Map(editions.map((e) => [e.id, e]))
+  const [from, to] = preset === 'custom' ? [customFrom, customTo] : presetRange(preset)
 
   if (sessions.length === 0) {
     return (
@@ -650,45 +972,141 @@ function HistoryView({
     )
   }
 
+  // Newest first, as listSessions already orders them.
+  const filtered = sessions.filter((s) => {
+    if (filterChildId && s.childId !== filterChildId) return false
+    if (from && s.date < from) return false
+    if (to && s.date > to) return false
+    return true
+  })
+  const bookCount = new Set(filtered.map((s) => s.editionId)).size
+  const filterChild = childById.get(filterChildId)
+  const rangeLabel = formatDateRangeLabel(from, to)
+
   return (
-    <div className="card">
-      {sessions.map((s) => {
-        const edition = editionById.get(s.editionId)
-        const title = edition?.title ?? 'Unknown book'
-        return (
-          <div key={s.id} className="session-row">
-            <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
-            <div className="session-row-body">
-              <div className="session-row-header">
-                <div>
-                  <strong>{title}</strong>
-                  {edition?.author && <span className="muted"> by {edition.author}</span>}
-                </div>
-                <button
-                  type="button"
-                  className="link-btn danger"
-                  onClick={() => {
-                    if (confirm(`Remove this reading of "${title}"?`)) onDelete(s.id)
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="muted">
-                {s.date} · {childById.get(s.childId)?.name ?? 'Unknown child'}
-                {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
-              </div>
-              {s.note && <div>{s.note}</div>}
-            </div>
+    <div>
+      <div className="card history-filters">
+        <div className="segmented">
+          {([
+            ['week', 'This week'],
+            ['month', 'This month'],
+            ['all', 'All time'],
+            ['custom', 'Custom'],
+          ] as const).map(([value, labelText]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={preset === value}
+              className={preset === value ? 'active' : ''}
+              onClick={() => {
+                // Custom starts from whatever was showing, so it refines rather than resets.
+                if (value === 'custom' && preset !== 'custom') {
+                  setCustomFrom(from)
+                  setCustomTo(to)
+                }
+                setPreset(value)
+              }}
+            >
+              {labelText}
+            </button>
+          ))}
+        </div>
+
+        {preset === 'custom' && (
+          <div className="filter-dates">
+            <label>
+              <span className="field-label">From</span>
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+            </label>
+            <label>
+              <span className="field-label">To</span>
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+            </label>
           </div>
-        )
-      })}
+        )}
+
+        {children.length > 1 && (
+          <select className="filter-child" aria-label="Child" value={filterChildId} onChange={(e) => setFilterChildId(e.target.value)}>
+            <option value="">All children</option>
+            {children.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
+
+        <div className="history-summary">
+          <span className="muted">
+            {filtered.length} reading{filtered.length === 1 ? '' : 's'} · {bookCount} book{bookCount === 1 ? '' : 's'}
+          </span>
+          <button type="button" className="submit-btn export-btn" onClick={() => setExportOpen(true)} disabled={filtered.length === 0}>
+            <span aria-hidden="true">↗</span> Export
+          </button>
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="card empty-state">Nothing logged for this selection.</div>
+      ) : (
+        <div className="card">
+          {filtered.map((s) => {
+            const edition = editionById.get(s.editionId)
+            const title = edition?.title ?? 'Unknown book'
+            return (
+              <div key={s.id} className="session-row">
+                <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
+                <div className="session-row-body">
+                  <div className="session-row-header">
+                    <div>
+                      <strong>{title}</strong>
+                      {edition?.author && <span className="muted"> by {edition.author}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      className="link-btn danger"
+                      onClick={() => {
+                        if (confirm(`Remove this reading of "${title}"?`)) onDelete(s.id)
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="muted">
+                    {s.date} · {childById.get(s.childId)?.name ?? 'Unknown child'}
+                    {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
+                  </div>
+                  {s.note && <div>{s.note}</div>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <Panel open={exportOpen} onClose={() => setExportOpen(false)} variant="sheet" title="Export">
+        <ExportOptions
+          sessions={filtered}
+          children={children}
+          editions={editions}
+          coverPhotoUrls={coverPhotoUrls}
+          titleLine={filterChild ? `${filterChild.name}'s books` : 'Our books'}
+          rangeLabel={rangeLabel}
+          onClose={() => setExportOpen(false)}
+        />
+      </Panel>
     </div>
   )
 }
 
 function download(filename: string, content: string | Blob, mime: string) {
-  const blob = content instanceof Blob ? content : new Blob([content], { type: mime })
+  // A UTF-8 BOM is prepended for plain-text formats that tend to be opened by
+  // naive external tools (Excel on a CSV, some editors on markdown) — without
+  // it, those tools guess the system codepage instead of UTF-8 and mangle any
+  // non-ASCII character (an em dash, a "×", an accented name) into mojibake.
+  // The Blob's own `type` only matters inside this tab; once saved to disk,
+  // whatever opens the file sees nothing but bytes and a file extension.
+  const needsBom = typeof content === 'string' && (mime.startsWith('text/csv') || mime.startsWith('text/markdown'))
+  const body = needsBom ? '\uFEFF' + content : content
+  const blob = body instanceof Blob ? body : new Blob([body], { type: mime })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -750,208 +1168,217 @@ function formatDateRangeLabel(from: string, to: string): string {
   return `${fmt(fromDate)} – ${fmt(toDate)}`
 }
 
-function ExportView({
+type ExportFormat = 'text' | 'image' | 'print' | 'csv'
+
+const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
+  { value: 'text', label: 'Text' },
+  { value: 'image', label: 'Image' },
+  { value: 'print', label: 'Print / PDF' },
+  { value: 'csv', label: 'Spreadsheet' },
+]
+
+function ExportOptions({
+  sessions,
   children,
   editions,
-  sessions,
-  activeChildId,
   coverPhotoUrls,
+  titleLine,
+  rangeLabel,
+  onClose,
 }: {
+  sessions: ReadingSession[]
   children: Child[]
   editions: Edition[]
-  sessions: ReadingSession[]
-  activeChildId: string
   coverPhotoUrls: Map<string, string>
+  titleLine: string
+  rangeLabel: string
+  onClose: () => void
 }) {
-  // One selection drives every filtered export, rather than each output carrying
-  // its own copy of the same child + date-range controls.
-  const [filterChildId, setFilterChildId] = useState(activeChildId)
-  const [from, setFrom] = useState(() => toISODate(startOfMonth(new Date())))
-  const [to, setTo] = useState(() => toISODate(endOfMonth(new Date())))
-  const [exportStyle, setExportStyle] = useState<'plain' | 'pretty' | 'poster'>('pretty')
+  const [format, setFormat] = useState<ExportFormat>('text')
+  const [showCovers, setShowCovers] = useState(true)
   const [showCounts, setShowCounts] = useState(false)
+  const [listImageStatus, setListImageStatus] = useState<'idle' | 'rendering' | 'error'>('idle')
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  const copyTimer = useRef<number>()
+  useEffect(() => () => window.clearTimeout(copyTimer.current), [])
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
-  const filtered = sessions
-    .filter((s) => {
-      if (filterChildId && s.childId !== filterChildId) return false
-      if (from && s.date < from) return false
-      if (to && s.date > to) return false
-      return true
-    })
-    .sort((a, b) => a.date.localeCompare(b.date))
+  // Oldest first, so the list reads chronologically. Ties within a day fall
+  // back to when the entry was made, for the same reason as in listSessions:
+  // a stable order rather than an arbitrary one.
+  const ordered = [...sessions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
 
-  const filterChild = children.find((c) => c.id === filterChildId)
-  const rangeLabel = formatDateRangeLabel(from, to)
-
-  // One entry per book, not per reading — a re-read shows a "×N" badge instead of repeating the cover.
-  const books: Array<{ editionId: string; count: number }> = []
+  // One entry per book, not per reading — a re-read shows a "×N" badge instead
+  // of repeating the cover, and its notes accumulate rather than the later ones
+  // overwriting the earlier ones.
+  const books: Array<{ editionId: string; count: number; notes: string[] }> = []
   const bookIndex = new Map<string, number>()
-  for (const s of filtered) {
+  for (const s of ordered) {
     const existingIndex = bookIndex.get(s.editionId)
     if (existingIndex === undefined) {
       bookIndex.set(s.editionId, books.length)
-      books.push({ editionId: s.editionId, count: 1 })
+      books.push({ editionId: s.editionId, count: 1, notes: s.note ? [s.note] : [] })
     } else {
       books[existingIndex].count += 1
+      if (s.note) books[existingIndex].notes.push(s.note)
     }
   }
 
+  const heading = `${titleLine} — ${rangeLabel}`
+
+  const copyListText = async () => {
+    const rows = books.map(({ editionId, count, notes }) => {
+      const edition = editionById.get(editionId)
+      return { title: edition?.title ?? 'Unknown book', author: edition?.author, notes, count }
+    })
+    const markdown = booksToMarkdown(titleLine, rangeLabel, rows, { showCounts })
+    window.clearTimeout(copyTimer.current)
+    try {
+      await navigator.clipboard.writeText(markdown)
+      setCopyStatus('copied')
+      // A brief, visible "Copied ✓" before the sheet closes itself — the
+      // clipboard write is otherwise invisible, so this is the only
+      // confirmation there is.
+      copyTimer.current = window.setTimeout(onClose, 700)
+    } catch (err) {
+      console.error('clipboard copy failed', err)
+      setCopyStatus('error')
+      // Left open on failure, so there's something to read and retry.
+      copyTimer.current = window.setTimeout(() => setCopyStatus('idle'), 1800)
+    }
+  }
+
+  const downloadListImage = async () => {
+    // Rendered here, in this session, rather than through a persistent visible
+    // canvas — so a locally photographed cover (a blob: URL) is fine to use:
+    // it only needs to load once, right now, to be baked into the PNG.
+    const rows: ListImageRow[] = books.map(({ editionId, count }) => {
+      const edition = editionById.get(editionId)
+      return { title: edition?.title ?? 'Unknown book', author: edition?.author, coverUrl: resolveCoverUrl(coverPhotoUrls, edition), count }
+    })
+    setListImageStatus('rendering')
+    try {
+      const canvas = document.createElement('canvas')
+      await renderListImage(canvas, heading, rows, { showCovers, showCounts })
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+      if (!blob) throw new Error('canvas.toBlob returned null')
+      download('readwiththem-list.png', blob, 'image/png')
+      setListImageStatus('idle')
+      onClose()
+    } catch (err) {
+      console.error('list image download failed', err)
+      setListImageStatus('error')
+    }
+  }
+
+  const downloadCSV = () => {
+    download('readwiththem-sessions.csv', storage.sessionsToCSV(ordered, children, editions), 'text/csv')
+    onClose()
+  }
+
+  const runExport = () => {
+    if (format === 'text') return copyListText()
+    if (format === 'image') return downloadListImage()
+    if (format === 'csv') return downloadCSV()
+    // The browser's own print dialog is the confirmation here, so the sheet
+    // closes as soon as it's handed off — but not before the browser has had
+    // a moment to capture the print snapshot, since closing unmounts the
+    // hidden print root this prints from.
+    window.print()
+    window.clearTimeout(copyTimer.current)
+    copyTimer.current = window.setTimeout(onClose, 300)
+  }
+
+  const exportLabel =
+    format === 'text'
+      ? copyStatus === 'copied'
+        ? 'Copied ✓'
+        : copyStatus === 'error'
+          ? 'Copy failed — try again'
+          : 'Copy text'
+      : format === 'image'
+        ? listImageStatus === 'rendering'
+          ? 'Preparing…'
+          : 'Download image'
+        : format === 'csv'
+          ? 'Download spreadsheet'
+          : 'Print / save as PDF'
+
+  // The list preview backs both the on-screen image export and the hidden
+  // print root — one render, two uses, rather than keeping them in sync by hand.
+  const listPreview = (
+    <div className="print-page list-mode">
+      <h2>{heading}</h2>
+      <ul className={`export-list${showCovers ? '' : ' plain'}`}>
+        {books.map(({ editionId, count }) => {
+          const edition = editionById.get(editionId)
+          const title = edition?.title ?? 'Unknown book'
+          return (
+            <li key={editionId} className="export-list-row">
+              {showCovers && (
+                <span className="cover-with-count">
+                  <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
+                  {showCounts && count > 1 && <span className="count-badge">×{count}</span>}
+                </span>
+              )}
+              <div className="export-list-text">
+                <strong>{title}</strong>
+                {edition?.author && <span className="muted"> — {edition.author}</span>}
+              </div>
+              {!showCovers && showCounts && count > 1 && <span className="count-inline">×{count}</span>}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+
   return (
-    <div>
-      <div className="card">
-        <h3>What to export</h3>
-        <label className="filter-field">
-          <span className="field-label">Child</span>
-          <select value={filterChildId} onChange={(e) => setFilterChildId(e.target.value)}>
-            <option value="">All children</option>
-            {children.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </label>
+    <>
+      <p className="muted export-summary">
+        {titleLine} · {rangeLabel} · {books.length} book{books.length === 1 ? '' : 's'}
+      </p>
 
-        <div className="filter-dates">
-          <label>
-            <span className="field-label">From</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label>
-            <span className="field-label">To</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="preset-row">
+      <div className="format-grid" role="radiogroup" aria-label="Export format">
+        {EXPORT_FORMATS.map(({ value, label }) => (
           <button
+            key={value}
             type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setFrom(toISODate(startOfWeek(new Date())))
-              setTo(toISODate(endOfWeek(new Date())))
-            }}
+            role="radio"
+            aria-checked={format === value}
+            className={format === value ? 'active' : ''}
+            onClick={() => setFormat(value)}
           >
-            This week
+            {label}
           </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setFrom(toISODate(startOfMonth(new Date())))
-              setTo(toISODate(endOfMonth(new Date())))
-            }}
-          >
-            This month
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setFrom('')
-              setTo('')
-            }}
-          >
-            All time
-          </button>
-        </div>
-
-        <p className="muted export-summary">
-          {filtered.length} reading{filtered.length === 1 ? '' : 's'} · {books.length} book{books.length === 1 ? '' : 's'} · {rangeLabel}
-        </p>
+        ))}
       </div>
 
-      <div className="card">
-        <h3>Print</h3>
-        <div className="segmented">
-          {([
-            ['plain', 'Plain list'],
-            ['pretty', 'Pretty list'],
-            ['poster', 'Poster'],
-          ] as const).map(([value, labelText]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={exportStyle === value}
-              className={exportStyle === value ? 'active' : ''}
-              onClick={() => setExportStyle(value)}
-            >
-              {labelText}
-            </button>
-          ))}
-        </div>
-
+      {(format === 'image' || format === 'print') && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={showCovers} onChange={(e) => setShowCovers(e.target.checked)} />
+          Include cover images
+        </label>
+      )}
+      {format !== 'csv' && (
         <label className="checkbox-row">
           <input type="checkbox" checked={showCounts} onChange={(e) => setShowCounts(e.target.checked)} />
           Include how often each book was read
         </label>
+      )}
 
-        {exportStyle !== 'poster' && (
-          <>
-            <button className="submit-btn print-btn" onClick={() => window.print()}>
-              Print list / save as PDF
-            </button>
-            <p className="muted print-hint">Opens your device's print dialog — pick A4, or "Save as PDF" to keep a copy.</p>
-          </>
-        )}
+      <button className="submit-btn export-submit" onClick={runExport} disabled={format === 'image' && listImageStatus === 'rendering'}>
+        {exportLabel}
+      </button>
+      {listImageStatus === 'error' && format === 'image' && (
+        <p className="muted">The image could not be generated — some covers may be unavailable.</p>
+      )}
 
-        {exportStyle !== 'poster' ? (
-          <div id="poster-print-area" className="print-page list-mode">
-            <h2>{filterChild ? `${filterChild.name}'s books` : 'Our books'} — {rangeLabel}</h2>
-            {books.length === 0 ? (
-              <p className="muted">No readings logged for this selection yet.</p>
-            ) : (
-              <ul className={`export-list${exportStyle === 'plain' ? ' plain' : ''}`}>
-                {books.map(({ editionId, count }) => {
-                  const edition = editionById.get(editionId)
-                  const title = edition?.title ?? 'Unknown book'
-                  return (
-                    <li key={editionId} className="export-list-row">
-                      {exportStyle === 'pretty' && (
-                        <span className="cover-with-count">
-                          <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
-                          {showCounts && <span className="count-badge">×{count}</span>}
-                        </span>
-                      )}
-                      <div className="export-list-text">
-                        <strong>{title}</strong>
-                        {edition?.author && <span className="muted"> — {edition.author}</span>}
-                      </div>
-                      {exportStyle === 'plain' && showCounts && <span className="count-inline">×{count}</span>}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-        ) : books.length === 0 ? (
-          <p className="muted">No readings logged for this selection yet.</p>
-        ) : (
-          // One tile per distinct book, not per reading: re-reads would otherwise
-          // repeat the same cover and shrink every tile for no extra information.
-          <PosterCanvas
-            tiles={books.map((b) => ({ coverUrl: resolveCoverUrl(coverPhotoUrls, editionById.get(b.editionId)), count: b.count }))}
-            label={rangeLabel}
-            showCounts={showCounts}
-          />
-        )}
-      </div>
-
-      <div className="card">
-        <h3>Download</h3>
-        <div className="download-row">
-          <button className="btn-secondary" onClick={() => download('readwiththem-sessions.csv', storage.sessionsToCSV(filtered, children, editions), 'text/csv')}>
-            CSV ({filtered.length} reading{filtered.length === 1 ? '' : 's'})
-          </button>
-          <span className="muted">One row per reading, for the selection above.</span>
-        </div>
-        <div className="download-row">
-          <button className="btn-secondary" onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}>
-            Full JSON backup
-          </button>
-          <span className="muted">Everything in this browser, ignoring the selection above. This is your backup — the data lives nowhere else.</span>
-        </div>
-      </div>
-    </div>
+      {/* Printed from a direct child of <body> rather than from inside the modal:
+          print CSS hides everything else outright (display: none, so no phantom
+          blank pages), which a top-layer dialog would not survive. */}
+      {createPortal(<div className="print-root">{listPreview}</div>, document.body)}
+    </>
   )
 }

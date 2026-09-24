@@ -65,7 +65,190 @@ h1 {
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  margin: 0 0 1rem;
+  margin: 0;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+}
+
+.icon-btn:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+/* Modal panels (native <dialog>). A sheet rises from the bottom on a phone and
+   becomes a centred card on wider screens; the drawer slides in from the right. */
+dialog.panel {
+  border: none;
+  padding: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+dialog.panel::backdrop {
+  background: rgba(15, 15, 12, 0.45);
+}
+
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+dialog.sheet {
+  width: 100%;
+  max-width: 100%;
+  max-height: 88dvh;
+  margin: auto 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  animation: sheet-up 0.22s ease-out;
+}
+
+@media (min-width: 640px) {
+  dialog.sheet {
+    max-width: 520px;
+    margin: auto;
+    border-radius: var(--radius-lg);
+    animation-name: fade-in;
+  }
+}
+
+dialog.drawer {
+  width: min(360px, 88vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0 0 0 auto;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  animation: drawer-in 0.22s ease-out;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(0.97); }
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 0.6rem 1rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.panel-header h2 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.8rem 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: none;
+}
+
+.settings-row > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.settings-row > span:last-child {
+  color: var(--color-text-muted);
+  font-size: 1.2rem;
+}
+
+.danger-row strong {
+  color: var(--color-danger);
+}
+
+/* Pinned to the bottom of the drawer, however little sits above it. */
+.settings-about {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+.settings-about p {
+  margin: 0.3rem 0 0;
+  line-height: 1.45;
+}
+
+.history-filters {
+  margin-bottom: 0.9rem;
+}
+
+.history-filters .segmented,
+.history-filters .filter-dates {
+  margin-bottom: 0.6rem;
+}
+
+.filter-child {
+  width: 100%;
+  margin-bottom: 0.6rem;
+}
+
+.history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.submit-btn.export-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.submit-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.csv-link {
+  align-self: flex-start;
+  margin-top: 1rem;
+  font-size: 0.85rem;
 }
 
 h3 {
@@ -259,18 +442,30 @@ img.cover-lg {
   gap: 0.5rem;
 }
 
-.child-list button {
-  width: 100%;
+.child-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.child-list li > button:first-child {
+  flex: 1;
+  min-width: 0;
   text-align: left;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   padding: 0.7rem 0.8rem;
 }
 
-.child-list button.child-active {
+.child-list li > button.child-active {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
   font-weight: 600;
+}
+
+.child-remove {
+  flex-shrink: 0;
+  font-size: 0.85rem;
 }
 
 .link-btn {
@@ -405,15 +600,6 @@ img.cover-lg {
   pointer-events: none;
 }
 
-.filter-field {
-  display: block;
-  margin-bottom: 0.7rem;
-}
-
-.filter-field select {
-  width: 100%;
-}
-
 .filter-dates {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -429,42 +615,38 @@ img.cover-lg {
   width: 100%;
 }
 
-.preset-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.preset-row button {
-  flex: 1;
-  padding: 0.5rem 0.3rem;
-  font-size: 0.85rem;
-}
-
 .export-summary {
-  margin: 0.8rem 0 0;
+  margin: 0 0 0.8rem;
 }
 
-.print-btn {
-  display: block;
+/* A single-select group of export formats, laid out 2x2 rather than as one
+   cramped row (unlike .segmented's 3-4 short words, "Spreadsheet" and
+   "Print / PDF" need the room). */
+.format-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.format-grid button {
+  padding: 0.6rem 0.4rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.format-grid button.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.export-submit {
   width: 100%;
-}
-
-.print-hint {
-  margin: 0.5rem 0 0;
-}
-
-.download-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.download-row + .download-row {
-  margin-top: 1rem;
-}
-
-.download-row button {
-  width: 100%;
+  margin-top: 0.3rem;
 }
 
 .segmented {
@@ -523,12 +705,6 @@ img.cover-lg {
   padding: 1rem;
 }
 
-/* The canvas carries the A4 shape itself, so the frame just wraps it. */
-.print-page.poster-mode {
-  padding: 0;
-  line-height: 0;
-}
-
 .export-list {
   list-style: none;
   margin: 0.8rem 0 0;
@@ -582,14 +758,9 @@ img.cover-lg {
   font-size: 0.8rem;
 }
 
-.poster-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.secondary-print {
-  margin-top: 0.5rem;
+/* Only exists while the export sheet is open, and only shows when printing. */
+.print-root {
+  display: none;
 }
 
 @media print {
@@ -597,38 +768,18 @@ img.cover-lg {
     size: A4;
     margin: 12mm;
   }
-  @page poster {
-    size: A4;
-    margin: 0;
+  /* display: none rather than visibility: hidden, so the app takes no layout
+     space and can't push the printout onto extra blank pages. */
+  body:has(> .print-root) > *:not(.print-root) {
+    display: none !important;
   }
-  body * {
-    visibility: hidden;
+  .print-root {
+    display: block;
   }
-  #poster-print-area,
-  #poster-print-area * {
-    visibility: visible;
-  }
-  #poster-print-area {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+  .print-root .print-page {
     border: none;
-  }
-  /* Sized in mm against the paper, never vh — vh resolves to the screen
-     viewport when printing and was what pushed the poster onto a second page.
-     The height is shaved marginally under 297mm so sub-pixel rounding can
-     never spill a second sheet. */
-  #poster-print-area.poster-mode {
-    page: poster;
-    width: 210mm;
-    height: 296.5mm;
-    overflow: hidden;
-  }
-  #poster-print-area.poster-mode canvas {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    margin: 0;
+    padding: 0;
   }
 }
 
@@ -724,6 +875,9 @@ img.cover-lg {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  dialog.panel {
+    animation: none;
+  }
   .toast {
     animation: none;
   }
@@ -768,6 +922,110 @@ img.cover-lg {
 
 .star.filled {
   color: var(--color-star);
+}
+
+.welcome p {
+  line-height: 1.5;
+  margin: 0 0 0.8rem;
+}
+
+.welcome-lead {
+  font-size: 1.05rem;
+}
+
+.welcome h3 {
+  margin-top: 1.2rem;
+}
+
+.welcome-steps {
+  margin: 0 0 0.8rem;
+  padding-left: 1.3rem;
+  line-height: 1.5;
+}
+
+.welcome-steps li + li {
+  margin-top: 0.4rem;
+}
+
+.inline-icon {
+  vertical-align: -3px;
+  color: var(--color-primary);
+}
+
+.welcome-install {
+  width: 100%;
+  margin-bottom: 0.8rem;
+}
+
+.welcome-skip {
+  display: block;
+  margin: 0.4rem 0 1rem;
+}
+
+.welcome-privacy {
+  margin: 0 !important;
+}
+
+/* Deliberately the smallest, quietest text on the page — a courtesy mention,
+   not a call to action. */
+.about-footer {
+  font-size: 0.75rem;
+  margin: 0.6rem 0 0 !important;
+}
+
+.about-footer a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Ko-fi's own cup-and-heart mark, greyed out until hover — a button styled as
+   the inline text link it replaced, opening the tip panel in place of a new tab. */
+.kofi-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.kofi-link img {
+  height: 1em;
+  width: auto;
+  filter: grayscale(1);
+  opacity: 0.75;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.kofi-link:hover img {
+  filter: none;
+  opacity: 1;
+}
+
+.restore-hint {
+  margin-top: 0.7rem;
+  text-align: center;
+}
+
+.restore-hint .link-btn {
+  font-size: 0.85rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .empty-state {
