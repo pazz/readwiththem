@@ -7,6 +7,7 @@ import { BarcodeScanner } from './BarcodeScanner'
 import { CoverCapture } from './CoverCapture'
 import { renderListImage, type ListImageRow } from './listImage'
 import { booksToMarkdown } from './exportText'
+import { pickPraise } from './praise'
 
 function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
   const [failed, setFailed] = useState(false)
@@ -131,8 +132,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        {/* Shared chrome above both tabs — greet the active child, else the default brand title */}
-        <h1>{activeChild ? `Read With ${activeChild.name}` : 'Read With Them'}</h1>
+        {/* Shared chrome above both tabs — greet the active child, else the default brand title.
+            Lowercase "with" here: this is a sentence-like greeting, not the app's proper name
+            (which stays "Read With Them" in the manifest, browser tab and welcome copy). */}
+        <h1>{activeChild ? `Read with ${activeChild.name}` : 'Read with Them'}</h1>
         <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
@@ -619,6 +622,8 @@ function LogReadingView({
   const [status, setStatus] = useState('')
   const [toast, setToast] = useState('')
   const toastTimer = useRef<number>()
+  // So two readings logged back to back never get the same joke twice running.
+  const lastPraiseTemplate = useRef<string>()
   const [coverPhotoBlob, setCoverPhotoBlob] = useState<Blob | null>(null)
   const [coverPhotoPreviewUrl, setCoverPhotoPreviewUrl] = useState<string | null>(null)
   const [capturingCover, setCapturingCover] = useState(false)
@@ -640,7 +645,7 @@ function LogReadingView({
   const confirm = (message: string) => {
     setToast(message)
     window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast(''), 2200)
+    toastTimer.current = window.setTimeout(() => setToast(''), 3300)
   }
 
   const latestDateByEdition = new Map<string, string>()
@@ -672,7 +677,9 @@ function LogReadingView({
       })
       setNote('')
       setRating('')
-      confirm(`Logged ${edition.title}`)
+      const praise = pickPraise(edition.title, lastPraiseTemplate.current)
+      lastPraiseTemplate.current = praise.template
+      confirm(praise.message)
       onChange()
     } catch (err) {
       console.error('readAgain failed', err)
@@ -751,7 +758,9 @@ function LogReadingView({
       setResults([])
       setQuery('')
       setStatus('')
-      confirm(`Logged ${book.title}`)
+      const praise = pickPraise(book.title, lastPraiseTemplate.current)
+      lastPraiseTemplate.current = praise.template
+      confirm(praise.message)
       onChange()
     } catch (err) {
       console.error('logReading failed', err)
@@ -789,7 +798,7 @@ function LogReadingView({
     <div>
       <form className="card" onSubmit={submit}>
         <p className="muted">
-          Logging for <strong>{activeChild.name}</strong> ·{' '}
+          New reading for <strong>{activeChild.name}</strong> ·{' '}
           <button type="button" className="link-btn" onClick={onSwitchToChildren}>switch child</button>
         </p>
 
@@ -958,6 +967,16 @@ function HistoryView({
   const [customFrom, setCustomFrom] = useState(() => presetRange('month')[0])
   const [customTo, setCustomTo] = useState(() => presetRange('month')[1])
   const [exportOpen, setExportOpen] = useState(false)
+  // Lives here, not in ExportOptions, so it survives the export sheet closing
+  // itself — a silent download (image, CSV) needs something to say where it went.
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<number>()
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+  const showToast = (message: string) => {
+    setToast(message)
+    window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(''), 3000)
+  }
 
   const childById = new Map(children.map((c) => [c.id, c]))
   const editionById = new Map(editions.map((e) => [e.id, e]))
@@ -1089,12 +1108,29 @@ function HistoryView({
           editions={editions}
           coverPhotoUrls={coverPhotoUrls}
           titleLine={filterChild ? `${filterChild.name}'s books` : 'Our books'}
+          childName={filterChild?.name}
           rangeLabel={rangeLabel}
           onClose={() => setExportOpen(false)}
+          onExported={showToast}
         />
       </Panel>
+
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          <span aria-hidden="true">✓</span> {toast}
+        </div>
+      )}
     </div>
   )
+}
+
+// Turns "Freya" / "September 2026" / "All time" into filename-safe words —
+// used to build exported filenames like "read-with-freya-september-2026".
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function download(filename: string, content: string | Blob, mime: string) {
@@ -1183,16 +1219,20 @@ function ExportOptions({
   editions,
   coverPhotoUrls,
   titleLine,
+  childName,
   rangeLabel,
   onClose,
+  onExported,
 }: {
   sessions: ReadingSession[]
   children: Child[]
   editions: Edition[]
   coverPhotoUrls: Map<string, string>
   titleLine: string
+  childName: string | undefined
   rangeLabel: string
   onClose: () => void
+  onExported: (message: string) => void
 }) {
   const [format, setFormat] = useState<ExportFormat>('text')
   const [showCovers, setShowCovers] = useState(true)
@@ -1226,6 +1266,9 @@ function ExportOptions({
   }
 
   const heading = `${titleLine} — ${rangeLabel}`
+  // e.g. "read-with-freya-september-2026" — echoes the header's own "Read
+  // With Freya" naming, and doubles as the print dialog's suggested filename.
+  const fileBase = `read-with-${slugify(childName ?? 'them')}-${slugify(rangeLabel)}`
 
   const copyListText = async () => {
     const rows = books.map(({ editionId, count, notes }) => {
@@ -1250,6 +1293,11 @@ function ExportOptions({
   }
 
   const downloadListImage = async () => {
+    // Opened synchronously, before any await, so the browser still treats it as
+    // a direct response to the click rather than a blocked pop-up — a tab that
+    // shows the finished image is the closest a web page can get to "opening"
+    // a file it just saved, since there's no API to do that for real.
+    const preview = window.open('', '_blank')
     // Rendered here, in this session, rather than through a persistent visible
     // canvas — so a locally photographed cover (a blob: URL) is fine to use:
     // it only needs to load once, right now, to be baked into the PNG.
@@ -1263,17 +1311,29 @@ function ExportOptions({
       await renderListImage(canvas, heading, rows, { showCovers, showCounts })
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!blob) throw new Error('canvas.toBlob returned null')
-      download('readwiththem-list.png', blob, 'image/png')
+      const filename = `${fileBase}.png`
+      download(filename, blob, 'image/png')
+      if (preview) {
+        const previewUrl = URL.createObjectURL(blob)
+        preview.location.href = previewUrl
+        // Freed well after the tab's had time to load the image, rather than
+        // right away, which would show a broken image instead.
+        window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000)
+      }
       setListImageStatus('idle')
+      onExported(`Saved ${filename} to your downloads`)
       onClose()
     } catch (err) {
       console.error('list image download failed', err)
+      preview?.close()
       setListImageStatus('error')
     }
   }
 
   const downloadCSV = () => {
-    download('readwiththem-sessions.csv', storage.sessionsToCSV(ordered, children, editions), 'text/csv')
+    const filename = `${fileBase}.csv`
+    download(filename, storage.sessionsToCSV(ordered, children, editions), 'text/csv')
+    onExported(`Saved ${filename} to your downloads`)
     onClose()
   }
 
@@ -1285,9 +1345,18 @@ function ExportOptions({
     // closes as soon as it's handed off — but not before the browser has had
     // a moment to capture the print snapshot, since closing unmounts the
     // hidden print root this prints from.
+    //
+    // Chrome (and some other browsers) suggest document.title as the filename
+    // when "Save as PDF" is chosen, so it's swapped in just for the print call
+    // and put back once the dialog's had it.
+    const previousTitle = document.title
+    document.title = fileBase
     window.print()
     window.clearTimeout(copyTimer.current)
-    copyTimer.current = window.setTimeout(onClose, 300)
+    copyTimer.current = window.setTimeout(() => {
+      document.title = previousTitle
+      onClose()
+    }, 300)
   }
 
   const exportLabel =
