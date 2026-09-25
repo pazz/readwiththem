@@ -31,7 +31,7 @@ export async function renderListImage(
   canvas: HTMLCanvasElement,
   heading: string,
   rows: ListImageRow[],
-  options: { showCovers: boolean; showCounts: boolean },
+  options: { showCovers: boolean; showCounts: boolean; accent?: string },
 ): Promise<void> {
   const rowHeight = options.showCovers ? COVER_ROW_HEIGHT : TEXT_ROW_HEIGHT
   canvas.width = WIDTH
@@ -88,7 +88,7 @@ export async function renderListImage(
     ctx.fillText(titleText, textX, rowCenter, textMaxWidth)
 
     if (options.showCounts && row.count > 1) {
-      ctx.fillStyle = '#2c5f4f'
+      ctx.fillStyle = options.accent ?? '#2c5f4f'
       ctx.font = '700 22px system-ui, sans-serif'
       ctx.textAlign = 'right'
       ctx.fillText(`×${row.count}`, WIDTH - PADDING, rowCenter)

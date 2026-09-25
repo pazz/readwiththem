@@ -15,6 +15,11 @@ export async function addChild(name: string, birthYear?: number): Promise<Child>
   return child
 }
 
+export async function updateChild(id: string, changes: Partial<Pick<Child, 'name' | 'birthYear' | 'colour'>>): Promise<void> {
+  await db.children.update(id, changes)
+  await logChange('child', id, 'update', changes)
+}
+
 export function listChildren(): Promise<Child[]> {
   return db.children.orderBy('name').toArray()
 }

@@ -5,10 +5,12 @@
   --color-border: #e3ddd0;
   --color-text: #1c1c1a;
   --color-text-muted: #63625b;
-  --color-primary: #2c5f4f;
-  --color-primary-hover: #234c40;
-  --color-primary-contrast: #ffffff;
-  --color-primary-soft: #e4ede9;
+  /* The accent follows the active child's colour when one is set (see
+     src/theme.ts, which sets the --child-* variables); these are the defaults. */
+  --color-primary: var(--child-primary, #2c5f4f);
+  --color-primary-hover: var(--child-primary-hover, #234c40);
+  --color-primary-contrast: var(--child-primary-contrast, #ffffff);
+  --color-primary-soft: var(--child-primary-soft, #e4ede9);
   --color-danger: #a8422c;
   --color-star: #d99a00;
   --radius-sm: 8px;
@@ -28,10 +30,10 @@
     --color-border: #34383e;
     --color-text: #f0efe9;
     --color-text-muted: #a3a299;
-    --color-primary: #57a98c;
-    --color-primary-hover: #6cbb9f;
-    --color-primary-contrast: #0c130f;
-    --color-primary-soft: #22322c;
+    --color-primary: var(--child-primary-dark, #57a98c);
+    --color-primary-hover: var(--child-primary-hover-dark, #6cbb9f);
+    --color-primary-contrast: var(--child-primary-contrast-dark, #0c130f);
+    --color-primary-soft: var(--child-primary-soft-dark, #22322c);
     --color-danger: #d97a63;
     --color-star: #e8b647;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.24);
@@ -193,7 +195,10 @@ dialog.drawer {
   gap: 0.15rem;
 }
 
-.settings-row > span:last-child {
+/* Was `:last-child`, matched to the icon span; three of the four rows have
+   dropped their icon, leaving the text span as its own last child and pulling
+   this size onto it too. A dedicated class isn't order-dependent. */
+.settings-row-icon {
   color: var(--color-text-muted);
   font-size: 1.2rem;
 }
@@ -219,11 +224,6 @@ dialog.drawer {
 
 .history-filters .segmented,
 .history-filters .filter-dates {
-  margin-bottom: 0.6rem;
-}
-
-.filter-child {
-  width: 100%;
   margin-bottom: 0.6rem;
 }
 
@@ -461,6 +461,61 @@ img.cover-lg {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
   font-weight: 600;
+}
+
+.child-colour {
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* The preset swatches and the one native picker, inside the colour panel. */
+/* Never wraps: it scrolls sideways on a phone narrow enough to need it, rather
+   than spilling onto a second row. */
+.colour-presets {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  padding: 0.2rem 0.1rem 0.4rem;
+  overflow-x: auto;
+}
+
+.colour-swatch {
+  flex-shrink: 0;
+  width: 2.3rem;
+  height: 2.3rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.colour-swatch.active {
+  border-color: var(--color-text);
+}
+
+/* Dashed, not a flat fill: reads as "pick your own" rather than a preset. */
+.colour-swatch-custom {
+  border: 2px dashed var(--color-text-muted);
+}
+
+.colour-swatch-custom::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.colour-swatch-custom::-webkit-color-swatch {
+  border: none;
+  border-radius: 999px;
+}
+
+.colour-swatch-custom::-moz-color-swatch {
+  border: none;
+  border-radius: 999px;
 }
 
 .child-remove {
@@ -743,7 +798,7 @@ img.cover-lg {
   position: absolute;
   top: -5px;
   right: -6px;
-  background: #2c5f4f;
+  background: var(--child-primary, #2c5f4f);
   color: #ffffff;
   border-radius: 999px;
   font-size: 0.6rem;
@@ -753,7 +808,7 @@ img.cover-lg {
 }
 
 .count-inline {
-  color: #2c5f4f;
+  color: var(--child-primary, #2c5f4f);
   font-weight: 700;
   font-size: 0.8rem;
 }

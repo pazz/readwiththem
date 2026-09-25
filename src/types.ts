@@ -2,6 +2,9 @@ export interface Child {
   id: string
   name: string
   birthYear?: number
+  // Hex accent colour for the UI while this child is active; unset means the
+  // default green. Not indexed, so no schema change was needed.
+  colour?: string
   createdAt: string
 }
 

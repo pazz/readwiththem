@@ -8,6 +8,8 @@ import { CoverCapture } from './CoverCapture'
 import { renderListImage, type ListImageRow } from './listImage'
 import { booksToMarkdown } from './exportText'
 import { pickPraise } from './praise'
+import { sortReadings, type BookOrder } from './bookOrder'
+import { applyTheme, childTheme, DEFAULT_COLOUR, PRESET_COLOURS } from './theme'
 
 function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {
   const [failed, setFailed] = useState(false)
@@ -98,9 +100,26 @@ export default function App() {
       storage.listCoverPhotos(),
     ])
     setChildren(c)
-    // Someone who already has children (but lost the remembered choice) has
-    // been here before: skip the welcome and let them pick.
-    if (c.length > 0) setTab((t) => (t === 'welcome' ? 'children' : t))
+    if (c.length > 0) {
+      // Someone who already has children (but lost the remembered choice) has
+      // been here before: skip the welcome and let them pick.
+      setTab((t) => (t === 'welcome' ? 'children' : t))
+      // With no valid active child — none ever chosen, or the remembered one
+      // was just removed — everything themed on it (header, accent colour)
+      // would silently fall back to the default. Rather than leave that
+      // silent, fall back to a real child instead: the one used to be reached
+      // for could still be applied and just never was, or is gone now.
+      setActiveChildId((current) => {
+        if (current && c.some((child) => child.id === current)) return current
+        const fallback = c[0].id
+        try {
+          localStorage.setItem('activeChildId', fallback)
+        } catch {
+          // ignore — worst case the choice just isn't remembered next session
+        }
+        return fallback
+      })
+    }
     setEditions(e)
     setSessions(s)
     // Object URLs are per-blob handles into browser memory — replace the whole
@@ -117,6 +136,14 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The child picker is reached from Settings on either tab; picking a child
+  // returns to whichever tab you came from, not always to Log.
+  const [returnTab, setReturnTab] = useState<'log' | 'history'>('log')
+  const openChildren = () => {
+    if (tab === 'log' || tab === 'history') setReturnTab(tab)
+    setTab('children')
+  }
+
   const chooseChild = (id: string) => {
     setActiveChildId(id)
     try {
@@ -124,17 +151,18 @@ export default function App() {
     } catch {
       // ignore — worst case the choice just isn't remembered next session
     }
-    setTab('log')
+    setTab(returnTab)
   }
 
   const activeChild = children.find((c) => c.id === activeChildId)
+  useEffect(() => applyTheme(activeChild?.colour), [activeChild?.colour])
 
   return (
     <div className="app">
       <header className="app-header">
-        {/* Shared chrome above both tabs — greet the active child, else the default brand title.
-            Lowercase "with" here: this is a sentence-like greeting, not the app's proper name
-            (which stays "Read With Them" in the manifest, browser tab and welcome copy). */}
+        {/* Shared chrome above both tabs, naming the one child the whole app is scoped
+            to (switch in Settings > Children). Lowercase "with": this is a greeting, not
+            the app's proper name (still "Read With Them" elsewhere). */}
         <h1>{activeChild ? `Read with ${activeChild.name}` : 'Read with Them'}</h1>
         <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -167,6 +195,10 @@ export default function App() {
             await reload()
             chooseChild(id)
           }}
+          onColour={async (id, colour) => {
+            await storage.updateChild(id, { colour })
+            await reload()
+          }}
           onDelete={async (id) => {
             await storage.deleteChild(id)
             if (id === activeChildId) {
@@ -188,7 +220,7 @@ export default function App() {
           sessions={sessions}
           coverPhotoUrls={coverPhotoUrls}
           onChange={reload}
-          onSwitchToChildren={() => setTab('children')}
+          onSwitchToChildren={openChildren}
         />
       )}
       {tab === 'history' && (
@@ -211,14 +243,14 @@ export default function App() {
           className="settings-row"
           onClick={() => {
             setSettingsOpen(false)
-            setTab('children')
+            openChildren()
           }}
         >
           <span>
             <strong>Children</strong>
             <span className="muted">Add a child, or switch who you're logging for</span>
           </span>
-          <span aria-hidden="true">›</span>
+          <span className="settings-row-icon" aria-hidden="true">›</span>
         </button>
         <button
           type="button"
@@ -229,7 +261,6 @@ export default function App() {
             <strong>Download full backup</strong>
             <span className="muted">Everything in this browser, as JSON. Keep it safe: the data lives nowhere else.</span>
           </span>
-          <span aria-hidden="true">↓</span>
         </button>
         <RestoreBackupButton variant="settings" />
         <button
@@ -250,7 +281,6 @@ export default function App() {
             <strong>Reset all data</strong>
             <span className="muted">Deletes every child, book and reading from this browser.</span>
           </span>
-          <span aria-hidden="true">⚠</span>
         </button>
         <div className="settings-about muted">
           <strong>Privacy</strong>
@@ -370,7 +400,6 @@ function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcome' }) {
               {status === 'restoring' ? 'Restoring…' : status === 'error' ? `Could not restore: ${error}` : 'Replaces everything above with a backup file.'}
             </span>
           </span>
-          <span aria-hidden="true">↑</span>
         </button>
       </>
     )
@@ -390,32 +419,17 @@ function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcome' }) {
 // Shared by the welcome screen and the settings drawer — the two places this
 // unobtrusive "who made this" footer belongs.
 function AboutFooter() {
-  const [kofiOpen, setKofiOpen] = useState(false)
   return (
-    <>
-      <p className="muted about-footer">
-        © 2026 Patrick Totzke ·{' '}
-        <button type="button" className="kofi-link" onClick={() => setKofiOpen(true)}>
-          <img src="https://storage.ko-fi.com/cdn/brandasset/v2/kofi_symbol.png" alt="" aria-hidden="true" /> Buy me
-          a coffee
-        </button>
-      </p>
-      {/* Portalled to the document body: AboutFooter is also used inside the settings
-          drawer's own <dialog>, and a nested <dialog> there would make the browser
-          close both when either one closes. */}
-      {createPortal(
-        <Panel open={kofiOpen} onClose={() => setKofiOpen(false)} variant="sheet" title="Support this app">
-          <iframe
-            id="kofiframe"
-            src="https://ko-fi.com/patricktotzke/?hidefeed=true&widget=true&embed=true&preview=true"
-            style={{ border: 'none', width: '100%', padding: '4px', background: '#f9f9f9' }}
-            height={712}
-            title="patricktotzke"
-          ></iframe>
-        </Panel>,
-        document.body,
-      )}
-    </>
+    <p className="muted about-footer">
+      © 2026 Patrick Totzke ·{' '}
+      {/* A plain external link, not the in-app iframe panel this used to open: as
+          an installed app, that panel stayed inside it — this hands off to the
+          system browser instead, the same as tapping any other external link. */}
+      <a href="https://ko-fi.com/patricktotzke" target="_blank" rel="noopener noreferrer" className="kofi-link">
+        <img src="https://storage.ko-fi.com/cdn/brandasset/v2/kofi_symbol.png" alt="" aria-hidden="true" /> Buy me a
+        coffee
+      </a>
+    </p>
   )
 }
 
@@ -505,12 +519,72 @@ function WelcomeView({ onContinue }: { onContinue: () => void }) {
   )
 }
 
+// The native colour input, committed on the "change" event (picker closed)
+// rather than React's onChange, which fires on every drag step and would write
+// each intermediate colour to storage and the change log.
+function ColourInput({ value, label, className, onCommit }: { value: string; label: string; className: string; onCommit: (colour: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const commit = useRef(onCommit)
+  commit.current = onCommit
+  useEffect(() => {
+    const input = ref.current
+    if (!input) return
+    const handle = () => commit.current(input.value)
+    input.addEventListener('change', handle)
+    return () => input.removeEventListener('change', handle)
+  }, [])
+  // Keyed on value so an outside change (e.g. a restore) resets the uncontrolled input.
+  return <input key={value} ref={ref} type="color" className={className} defaultValue={value} aria-label={label} title={label} />
+}
+
+// The swatch button opens a panel offering exactly two kinds of choice: the
+// curated presets, and one native picker for anything else — not a full
+// picker inlined into every row, which a list this width has no room for.
+function ColourPicker({ value, childName, onChange }: { value: string; childName: string; onChange: (colour: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const choose = (colour: string) => {
+    onChange(colour)
+    setOpen(false)
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="child-colour"
+        style={{ background: value }}
+        aria-label={`Colour for ${childName}`}
+        title={`Colour for ${childName}`}
+        onClick={() => setOpen(true)}
+      />
+      <Panel open={open} onClose={() => setOpen(false)} variant="sheet" title={`Colour for ${childName}`}>
+        {/* One row: the current colour leads (it's the live native picker, for
+            anything not in the presets), the fixed presets follow. */}
+        <div className="colour-presets">
+          <ColourInput value={value} label="Current colour — tap to choose a custom one" className="colour-swatch colour-swatch-custom" onCommit={choose} />
+          {PRESET_COLOURS.map((p) => (
+            <button
+              key={p.hex}
+              type="button"
+              className={`colour-swatch${value.toLowerCase() === p.hex.toLowerCase() ? ' active' : ''}`}
+              style={{ background: p.hex }}
+              aria-label={p.name}
+              title={p.name}
+              onClick={() => choose(p.hex)}
+            />
+          ))}
+        </div>
+      </Panel>
+    </>
+  )
+}
+
 function ChildrenView({
   children,
   sessions,
   activeChildId,
   onSelect,
   onCreated,
+  onColour,
   onDelete,
 }: {
   children: Child[]
@@ -518,6 +592,7 @@ function ChildrenView({
   activeChildId: string
   onSelect: (id: string) => void
   onCreated: (id: string) => void
+  onColour: (id: string, colour: string) => void
   onDelete: (id: string) => void
 }) {
   const [name, setName] = useState('')
@@ -539,56 +614,73 @@ function ChildrenView({
     }
   }
 
-  return (
-    <div>
-      <div className="card">
-        <h3>{children.length === 0 ? 'Who are you reading with?' : 'Add a child'}</h3>
-        <form onSubmit={submit}>
-          <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} />
-          <input placeholder="Birth year (optional)" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} type="number" />
-          <button className="submit-btn" type="submit">Add child</button>
-          {error && <p className="muted">Could not save: {error}</p>}
-        </form>
-        {children.length === 0 && (
-          <div className="restore-hint">
-            <RestoreBackupButton variant="welcome" />
-          </div>
-        )}
-      </div>
+  // With children already added, choosing one is the main job here, so the
+  // list comes first and the add form second.
+  const addForm = (
+    <div className="card">
+      <h3>{children.length === 0 ? 'Who are you reading with?' : 'Add a child'}</h3>
+      <form onSubmit={submit}>
+        <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input placeholder="Birth year (optional)" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} type="number" />
+        <button className="submit-btn" type="submit">Add child</button>
+        {error && <p className="muted">Could not save: {error}</p>}
+      </form>
+      {children.length === 0 && (
+        <div className="restore-hint">
+          <RestoreBackupButton variant="welcome" />
+        </div>
+      )}
+    </div>
+  )
 
-      {children.length === 0 ? (
+  if (children.length === 0) {
+    return (
+      <div>
+        {addForm}
         <div className="card empty-state">
           <span className="empty-icon" aria-hidden="true">🧒</span>
           Add a child above to get started.
         </div>
-      ) : (
-        <div className="card">
-          <ul className="child-list">
-            {children.map((c) => {
-              const readingCount = sessions.filter((s) => s.childId === c.id).length
-              return (
-                <li key={c.id}>
-                  <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
-                    {c.id === activeChildId ? '✓ ' : ''}
-                    {c.name}
-                    {c.birthYear ? ` (b. ${c.birthYear})` : ''}
-                  </button>
-                  <button
-                    type="button"
-                    className="link-btn danger child-remove"
-                    onClick={() => {
-                      const warning = readingCount > 0 ? ` This also removes ${readingCount} reading${readingCount === 1 ? '' : 's'} logged for them.` : ''
-                      if (confirm(`Remove ${c.name}?${warning} This cannot be undone.`)) onDelete(c.id)
-                    }}
-                  >
-                    Remove
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="card">
+        <h3>Who are you reading with?</h3>
+        <ul className="child-list">
+          {children.map((c) => {
+            const readingCount = sessions.filter((s) => s.childId === c.id).length
+            return (
+              <li key={c.id}>
+                <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
+                  {c.id === activeChildId ? '✓ ' : ''}
+                  {c.name}
+                  {c.birthYear ? ` (b. ${c.birthYear})` : ''}
+                </button>
+                <ColourPicker
+                  value={c.colour ?? DEFAULT_COLOUR}
+                  childName={c.name}
+                  onChange={(colour) => onColour(c.id, colour)}
+                />
+                <button
+                  type="button"
+                  className="link-btn danger child-remove"
+                  onClick={() => {
+                    const warning = readingCount > 0 ? ` This also removes ${readingCount} reading${readingCount === 1 ? '' : 's'} logged for them.` : ''
+                    if (confirm(`Remove ${c.name}?${warning} This cannot be undone.`)) onDelete(c.id)
+                  }}
+                >
+                  Remove
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      {addForm}
     </div>
   )
 }
@@ -798,8 +890,7 @@ function LogReadingView({
     <div>
       <form className="card" onSubmit={submit}>
         <p className="muted">
-          New reading for <strong>{activeChild.name}</strong> ·{' '}
-          <button type="button" className="link-btn" onClick={onSwitchToChildren}>switch child</button>
+          New reading for <strong>{activeChild.name}</strong>
         </p>
 
         <div>
@@ -938,6 +1029,16 @@ function LogReadingView({
 
 type RangePreset = 'week' | 'month' | 'all' | 'custom'
 
+// A viewing preference, like the active child, so it lives in localStorage.
+function loadBookOrder(): BookOrder {
+  try {
+    const saved = localStorage.getItem('bookOrder')
+    return saved === 'count' || saved === 'title' ? saved : 'recent'
+  } catch {
+    return 'recent'
+  }
+}
+
 function presetRange(preset: Exclude<RangePreset, 'custom'>): [string, string] {
   const now = new Date()
   if (preset === 'week') return [toISODate(startOfWeek(now)), toISODate(endOfWeek(now))]
@@ -960,9 +1061,9 @@ function HistoryView({
   coverPhotoUrls: Map<string, string>
   onDelete: (id: string) => void
 }) {
-  // One selection drives both the list and every export: the sheet exports
-  // exactly what is on screen.
-  const [filterChildId, setFilterChildId] = useState(activeChildId)
+  // Scoped to the active child, like the rest of the app (switch in Settings >
+  // Children). The date range is the only filter here; the export sheet exports
+  // the same readings, in the book order chosen there.
   const [preset, setPreset] = useState<RangePreset>('month')
   const [customFrom, setCustomFrom] = useState(() => presetRange('month')[0])
   const [customTo, setCustomTo] = useState(() => presetRange('month')[1])
@@ -993,18 +1094,20 @@ function HistoryView({
 
   // Newest first, as listSessions already orders them.
   const filtered = sessions.filter((s) => {
-    if (filterChildId && s.childId !== filterChildId) return false
+    // No active child (e.g. just removed) falls back to the whole household.
+    if (activeChildId && s.childId !== activeChildId) return false
     if (from && s.date < from) return false
     if (to && s.date > to) return false
     return true
   })
   const bookCount = new Set(filtered.map((s) => s.editionId)).size
-  const filterChild = childById.get(filterChildId)
+  const filterChild = childById.get(activeChildId)
   const rangeLabel = formatDateRangeLabel(from, to)
 
   return (
     <div>
       <div className="card history-filters">
+        <span className="field-label">Period</span>
         <div className="segmented">
           {([
             ['week', 'This week'],
@@ -1044,15 +1147,6 @@ function HistoryView({
           </div>
         )}
 
-        {children.length > 1 && (
-          <select className="filter-child" aria-label="Child" value={filterChildId} onChange={(e) => setFilterChildId(e.target.value)}>
-            <option value="">All children</option>
-            {children.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        )}
-
         <div className="history-summary">
           <span className="muted">
             {filtered.length} reading{filtered.length === 1 ? '' : 's'} · {bookCount} book{bookCount === 1 ? '' : 's'}
@@ -1090,7 +1184,8 @@ function HistoryView({
                     </button>
                   </div>
                   <div className="muted">
-                    {s.date} · {childById.get(s.childId)?.name ?? 'Unknown child'}
+                    {s.date}
+                    {!filterChild && ` · ${childById.get(s.childId)?.name ?? 'Unknown child'}`}
                     {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
                   </div>
                   {s.note && <div>{s.note}</div>}
@@ -1109,6 +1204,7 @@ function HistoryView({
           coverPhotoUrls={coverPhotoUrls}
           titleLine={filterChild ? `${filterChild.name}'s books` : 'Our books'}
           childName={filterChild?.name}
+          accent={childTheme(filterChild?.colour ?? DEFAULT_COLOUR).light.primary}
           rangeLabel={rangeLabel}
           onClose={() => setExportOpen(false)}
           onExported={showToast}
@@ -1220,6 +1316,7 @@ function ExportOptions({
   coverPhotoUrls,
   titleLine,
   childName,
+  accent,
   rangeLabel,
   onClose,
   onExported,
@@ -1230,11 +1327,21 @@ function ExportOptions({
   coverPhotoUrls: Map<string, string>
   titleLine: string
   childName: string | undefined
+  accent: string
   rangeLabel: string
   onClose: () => void
   onExported: (message: string) => void
 }) {
   const [format, setFormat] = useState<ExportFormat>('text')
+  const [order, setOrder] = useState<BookOrder>(loadBookOrder)
+  const chooseOrder = (value: BookOrder) => {
+    setOrder(value)
+    try {
+      localStorage.setItem('bookOrder', value)
+    } catch {
+      // ignore — the choice just isn't remembered next time
+    }
+  }
   const [showCovers, setShowCovers] = useState(true)
   const [showCounts, setShowCounts] = useState(false)
   const [listImageStatus, setListImageStatus] = useState<'idle' | 'rendering' | 'error'>('idle')
@@ -1244,25 +1351,25 @@ function ExportOptions({
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
 
-  // Oldest first, so the list reads chronologically. Ties within a day fall
-  // back to when the entry was made, for the same reason as in listSessions:
-  // a stable order rather than an arbitrary one.
-  const ordered = [...sessions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
-
+  // sortReadings groups each book's readings and puts the books in the chosen
+  // order, so each book is taken at its first appearance. The CSV uses the same
+  // list, so every format agrees.
+  const sorted = sortReadings(sessions, (id) => editionById.get(id)?.title ?? '', order)
   // One entry per book, not per reading — a re-read shows a "×N" badge instead
-  // of repeating the cover, and its notes accumulate rather than the later ones
-  // overwriting the earlier ones.
+  // of repeating the cover. Notes accumulate oldest first, so they read as a
+  // diary whatever order the books themselves are in.
   const books: Array<{ editionId: string; count: number; notes: string[] }> = []
   const bookIndex = new Map<string, number>()
-  for (const s of ordered) {
-    const existingIndex = bookIndex.get(s.editionId)
-    if (existingIndex === undefined) {
-      bookIndex.set(s.editionId, books.length)
-      books.push({ editionId: s.editionId, count: 1, notes: s.note ? [s.note] : [] })
-    } else {
-      books[existingIndex].count += 1
-      if (s.note) books[existingIndex].notes.push(s.note)
-    }
+  for (const s of sorted) {
+    if (bookIndex.has(s.editionId)) continue
+    bookIndex.set(s.editionId, books.length)
+    books.push({ editionId: s.editionId, count: 0, notes: [] })
+  }
+  const chronological = [...sessions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
+  for (const s of chronological) {
+    const book = books[bookIndex.get(s.editionId)!]
+    book.count += 1
+    if (s.note) book.notes.push(s.note)
   }
 
   const heading = `${titleLine} — ${rangeLabel}`
@@ -1308,7 +1415,7 @@ function ExportOptions({
     setListImageStatus('rendering')
     try {
       const canvas = document.createElement('canvas')
-      await renderListImage(canvas, heading, rows, { showCovers, showCounts })
+      await renderListImage(canvas, heading, rows, { showCovers, showCounts, accent })
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!blob) throw new Error('canvas.toBlob returned null')
       const filename = `${fileBase}.png`
@@ -1332,7 +1439,7 @@ function ExportOptions({
 
   const downloadCSV = () => {
     const filename = `${fileBase}.csv`
-    download(filename, storage.sessionsToCSV(ordered, children, editions), 'text/csv')
+    download(filename, storage.sessionsToCSV(sorted, children, editions), 'text/csv')
     onExported(`Saved ${filename} to your downloads`)
     onClose()
   }
@@ -1409,6 +1516,26 @@ function ExportOptions({
         {titleLine} · {rangeLabel} · {books.length} book{books.length === 1 ? '' : 's'}
       </p>
 
+      <span className="field-label">Sort books by</span>
+      <div className="segmented">
+        {([
+          ['recent', 'Last read'],
+          ['count', 'Most read'],
+          ['title', 'Title'],
+        ] as const).map(([value, labelText]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={order === value}
+            className={order === value ? 'active' : ''}
+            onClick={() => chooseOrder(value)}
+          >
+            {labelText}
+          </button>
+        ))}
+      </div>
+
+      <span className="field-label">Format</span>
       <div className="format-grid" role="radiogroup" aria-label="Export format">
         {EXPORT_FORMATS.map(({ value, label }) => (
           <button
