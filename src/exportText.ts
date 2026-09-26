@@ -15,7 +15,7 @@ export function booksToMarkdown(
   title: string,
   periodLabel: string,
   rows: MarkdownRow[],
-  options: { showCounts: boolean },
+  options: { showCounts: boolean; showNotes: boolean },
 ): string {
   // Setext-style heading: the title underlined with "=", rather than "# Title",
   // so the period can sit on its own line directly beneath without competing
@@ -29,8 +29,10 @@ export function booksToMarkdown(
     const authorPart = row.author ? ` — ${row.author}` : ''
     const countPart = options.showCounts && row.count > 1 ? ` (×${row.count})` : ''
     lines.push(`- ${row.title}${authorPart}${countPart}`)
-    for (const note of row.notes) {
-      lines.push(`  - ${note}`)
+    if (options.showNotes) {
+      for (const note of row.notes) {
+        lines.push(`  - ${note}`)
+      }
     }
   }
   return lines.join('\n')

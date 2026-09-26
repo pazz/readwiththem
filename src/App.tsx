@@ -25,10 +25,16 @@ function BookCover({ src, title, size }: { src: string | undefined; title: strin
 }
 
 // A parent-photographed cover always wins over a catalogue one: it's their own
-// copy, and it's the only option at all for a book the catalogue has no cover for.
-function resolveCoverUrl(coverPhotoUrls: Map<string, string>, edition: Edition | undefined): string | undefined {
+// copy, and it's the only option at all for a book the catalogue has no cover
+// for. Next, the local cache of a fetched catalogue cover, so display doesn't
+// depend on that CDN being reachable right now; only then the live URL itself.
+function resolveCoverUrl(
+  coverPhotoUrls: Map<string, string>,
+  coverCacheUrls: Map<string, string>,
+  edition: Edition | undefined,
+): string | undefined {
   if (!edition) return undefined
-  return coverPhotoUrls.get(edition.id) ?? edition.coverUrl
+  return coverPhotoUrls.get(edition.id) ?? coverCacheUrls.get(edition.id) ?? edition.coverUrl
 }
 
 function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -91,13 +97,20 @@ export default function App() {
   const [sessions, setSessions] = useState<ReadingSession[]>([])
   const [activeChildId, setActiveChildId] = useState(loadActiveChildId)
   const [coverPhotoUrls, setCoverPhotoUrls] = useState<Map<string, string>>(new Map())
+  const [coverCacheUrls, setCoverCacheUrls] = useState<Map<string, string>>(new Map())
+  // If the very first load hangs — the same blocked-connection failure mode
+  // db.ts's versionchange handler guards against — the screen would otherwise
+  // just look permanently blank with nothing to explain why.
+  const [slowLoad, setSlowLoad] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   const reload = async () => {
-    const [c, e, s, photos] = await Promise.all([
+    const [c, e, s, photos, cachedCovers] = await Promise.all([
       storage.listChildren(),
       storage.listEditions(),
       storage.listSessions(),
       storage.listCoverPhotos(),
+      storage.listCachedCovers(),
     ])
     setChildren(c)
     if (c.length > 0) {
@@ -129,10 +142,38 @@ export default function App() {
       prev.forEach((url) => URL.revokeObjectURL(url))
       return new Map(photos.map((p) => [p.editionId, URL.createObjectURL(p.blob)]))
     })
+    setCoverCacheUrls((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url))
+      return new Map(cachedCovers.map((p) => [p.editionId, URL.createObjectURL(p.blob)]))
+    })
+    // Backfill for editions added before this cache existed (or restored from
+    // a backup, which never carries it): not awaited, and each one no-ops if
+    // already cached, so this is cheap to just run on every load.
+    const cachedIds = new Set(cachedCovers.map((p) => p.editionId))
+    for (const edition of e) {
+      if (edition.coverUrl && !photos.some((p) => p.editionId === edition.id) && !cachedIds.has(edition.id)) {
+        storage.cacheCoverIfMissing(edition.id, edition.coverUrl)
+      }
+    }
+  }
+
+  // Split from reload() (rather than just calling it) so a genuine hang here
+  // — the connection blocked by a stale tab, most likely, but this is the
+  // one call nothing else can work without — ends in a clear, retryable
+  // error instead of an indefinite spinner with no way out.
+  const startInitialLoad = () => {
+    setLoadError('')
+    const timer = window.setTimeout(() => setSlowLoad(true), 6000)
+    withTimeout(reload(), 25_000, "Couldn't load. If another tab or window of this app is open, close it and try again.")
+      .catch((err) => setLoadError(err instanceof Error ? err.message : String(err)))
+      .finally(() => {
+        window.clearTimeout(timer)
+        setSlowLoad(false)
+      })
   }
 
   useEffect(() => {
-    reload()
+    startInitialLoad()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -171,6 +212,21 @@ export default function App() {
           </svg>
         </button>
       </header>
+      {loadError ? (
+        <div className="card empty-state">
+          <p>{loadError}</p>
+          <button type="button" className="submit-btn" onClick={startInitialLoad}>
+            Try again
+          </button>
+        </div>
+      ) : (
+        slowLoad && (
+          <div className="card empty-state">
+            Taking longer than usual to load. If another tab or window of this app is open — including in the
+            background — try closing it and reloading this one.
+          </div>
+        )
+      )}
       {tab === 'welcome' && <WelcomeView onContinue={() => setTab('children')} />}
       {tab !== 'welcome' && (
       <nav>
@@ -219,6 +275,7 @@ export default function App() {
           editions={editions}
           sessions={sessions}
           coverPhotoUrls={coverPhotoUrls}
+          coverCacheUrls={coverCacheUrls}
           onChange={reload}
           onSwitchToChildren={openChildren}
         />
@@ -230,6 +287,7 @@ export default function App() {
           editions={editions}
           activeChildId={activeChildId}
           coverPhotoUrls={coverPhotoUrls}
+          coverCacheUrls={coverCacheUrls}
           onDelete={async (id) => {
             await storage.deleteSession(id)
             await reload()
@@ -255,7 +313,9 @@ export default function App() {
         <button
           type="button"
           className="settings-row"
-          onClick={async () => download('readwiththem-backup.json', await storage.exportBackupJSON(), 'application/json')}
+          onClick={async () =>
+            download(`readwiththem-backup-${toISODate(new Date())}.json`, await storage.exportBackupJSON(), 'application/json')
+          }
         >
           <span>
             <strong>Download full backup</strong>
@@ -345,6 +405,17 @@ function Panel({
   )
 }
 
+// A stuck IndexedDB connection (see db.ts's versionchange handler — this is
+// what that guards against) has no error and no native timeout: it just
+// never resolves. Rather than let that show up as a silent, permanent spin
+// on whatever action triggered it, this turns "never" into a clear failure.
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(message)), ms)),
+  ])
+}
+
 // The counterpart to "Download full backup" — restores one, from the settings
 // drawer or from the very first screen (moving to a new device, or recovering
 // after this one's storage was cleared). A restore replaces everything
@@ -361,7 +432,11 @@ function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcome' }) {
     setStatus('restoring')
     setError('')
     try {
-      await storage.importBackupJSON(await file.text())
+      await withTimeout(
+        storage.importBackupJSON(await file.text()),
+        15_000,
+        "Timed out. If another tab or window of this app is open, close it and try again — that's the most common cause.",
+      )
       try {
         localStorage.removeItem('activeChildId')
       } catch {
@@ -598,19 +673,27 @@ function ChildrenView({
   const [name, setName] = useState('')
   const [birthYear, setBirthYear] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
+    setSubmitting(true)
+    setError('')
     try {
-      const child = await storage.addChild(name.trim(), birthYear ? Number(birthYear) : undefined)
+      const child = await withTimeout(
+        storage.addChild(name.trim(), birthYear ? Number(birthYear) : undefined),
+        15_000,
+        "Timed out. If another tab or window of this app is open, close it and try again — that's the most common cause.",
+      )
       setName('')
       setBirthYear('')
-      setError('')
       onCreated(child.id)
     } catch (err) {
       console.error('addChild failed', err)
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -622,7 +705,7 @@ function ChildrenView({
       <form onSubmit={submit}>
         <input placeholder="Child's name" value={name} onChange={(e) => setName(e.target.value)} />
         <input placeholder="Birth year (optional)" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} type="number" />
-        <button className="submit-btn" type="submit">Add child</button>
+        <button className="submit-btn" type="submit" disabled={submitting}>{submitting ? 'Adding…' : 'Add child'}</button>
         {error && <p className="muted">Could not save: {error}</p>}
       </form>
       {children.length === 0 && (
@@ -690,6 +773,7 @@ function LogReadingView({
   editions,
   sessions,
   coverPhotoUrls,
+  coverCacheUrls,
   onChange,
   onSwitchToChildren,
 }: {
@@ -697,6 +781,7 @@ function LogReadingView({
   editions: Edition[]
   sessions: ReadingSession[]
   coverPhotoUrls: Map<string, string>
+  coverCacheUrls: Map<string, string>
   onChange: () => void
   onSwitchToChildren: () => void
 }) {
@@ -945,7 +1030,7 @@ function LogReadingView({
                   <div className="cover-cascade">
                     {recentEditions.map((e) => (
                       <button key={e.id} type="button" className="cascade-item" onClick={() => readAgain(e)}>
-                        <BookCover src={resolveCoverUrl(coverPhotoUrls, e)} title={e.title} size="lg" />
+                        <BookCover src={resolveCoverUrl(coverPhotoUrls, coverCacheUrls, e)} title={e.title} size="lg" />
                         <span>{e.title}</span>
                       </button>
                     ))}
@@ -1052,6 +1137,7 @@ function HistoryView({
   editions,
   activeChildId,
   coverPhotoUrls,
+  coverCacheUrls,
   onDelete,
 }: {
   sessions: ReadingSession[]
@@ -1059,6 +1145,7 @@ function HistoryView({
   editions: Edition[]
   activeChildId: string
   coverPhotoUrls: Map<string, string>
+  coverCacheUrls: Map<string, string>
   onDelete: (id: string) => void
 }) {
   // Scoped to the active child, like the rest of the app (switch in Settings >
@@ -1166,7 +1253,7 @@ function HistoryView({
             const title = edition?.title ?? 'Unknown book'
             return (
               <div key={s.id} className="session-row">
-                <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
+                <BookCover src={resolveCoverUrl(coverPhotoUrls, coverCacheUrls, edition)} title={title} size="sm" />
                 <div className="session-row-body">
                   <div className="session-row-header">
                     <div>
@@ -1202,6 +1289,7 @@ function HistoryView({
           children={children}
           editions={editions}
           coverPhotoUrls={coverPhotoUrls}
+          coverCacheUrls={coverCacheUrls}
           titleLine={filterChild ? `${filterChild.name}'s books` : 'Our books'}
           childName={filterChild?.name}
           accent={childTheme(filterChild?.colour ?? DEFAULT_COLOUR).light.primary}
@@ -1314,6 +1402,7 @@ function ExportOptions({
   children,
   editions,
   coverPhotoUrls,
+  coverCacheUrls,
   titleLine,
   childName,
   accent,
@@ -1325,6 +1414,7 @@ function ExportOptions({
   children: Child[]
   editions: Edition[]
   coverPhotoUrls: Map<string, string>
+  coverCacheUrls: Map<string, string>
   titleLine: string
   childName: string | undefined
   accent: string
@@ -1343,6 +1433,7 @@ function ExportOptions({
     }
   }
   const [showCovers, setShowCovers] = useState(true)
+  const [showNotes, setShowNotes] = useState(true)
   const [showCounts, setShowCounts] = useState(false)
   const [listImageStatus, setListImageStatus] = useState<'idle' | 'rendering' | 'error'>('idle')
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
@@ -1382,7 +1473,7 @@ function ExportOptions({
       const edition = editionById.get(editionId)
       return { title: edition?.title ?? 'Unknown book', author: edition?.author, notes, count }
     })
-    const markdown = booksToMarkdown(titleLine, rangeLabel, rows, { showCounts })
+    const markdown = booksToMarkdown(titleLine, rangeLabel, rows, { showCounts, showNotes })
     window.clearTimeout(copyTimer.current)
     try {
       await navigator.clipboard.writeText(markdown)
@@ -1408,14 +1499,14 @@ function ExportOptions({
     // Rendered here, in this session, rather than through a persistent visible
     // canvas — so a locally photographed cover (a blob: URL) is fine to use:
     // it only needs to load once, right now, to be baked into the PNG.
-    const rows: ListImageRow[] = books.map(({ editionId, count }) => {
+    const rows: ListImageRow[] = books.map(({ editionId, count, notes }) => {
       const edition = editionById.get(editionId)
-      return { title: edition?.title ?? 'Unknown book', author: edition?.author, coverUrl: resolveCoverUrl(coverPhotoUrls, edition), count }
+      return { title: edition?.title ?? 'Unknown book', author: edition?.author, coverUrl: resolveCoverUrl(coverPhotoUrls, coverCacheUrls, edition), count, notes }
     })
     setListImageStatus('rendering')
     try {
       const canvas = document.createElement('canvas')
-      await renderListImage(canvas, heading, rows, { showCovers, showCounts, accent })
+      const { failedCovers } = await renderListImage(canvas, heading, rows, { showCovers, showCounts, showNotes, accent })
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!blob) throw new Error('canvas.toBlob returned null')
       const filename = `${fileBase}.png`
@@ -1428,7 +1519,14 @@ function ExportOptions({
         window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60_000)
       }
       setListImageStatus('idle')
-      onExported(`Saved ${filename} to your downloads`)
+      // A cover that had a URL but genuinely couldn't be fetched (blocked,
+      // offline, an uncooperative CDN even via the proxy retry) is worth
+      // saying — otherwise the export just looks quietly incomplete.
+      onExported(
+        failedCovers > 0
+          ? `Saved ${filename} — ${failedCovers} cover${failedCovers === 1 ? '' : 's'} couldn't be fetched`
+          : `Saved ${filename} to your downloads`,
+      )
       onClose()
     } catch (err) {
       console.error('list image download failed', err)
@@ -1487,20 +1585,21 @@ function ExportOptions({
     <div className="print-page list-mode">
       <h2>{heading}</h2>
       <ul className={`export-list${showCovers ? '' : ' plain'}`}>
-        {books.map(({ editionId, count }) => {
+        {books.map(({ editionId, count, notes }) => {
           const edition = editionById.get(editionId)
           const title = edition?.title ?? 'Unknown book'
           return (
             <li key={editionId} className="export-list-row">
               {showCovers && (
                 <span className="cover-with-count">
-                  <BookCover src={resolveCoverUrl(coverPhotoUrls, edition)} title={title} size="sm" />
+                  <BookCover src={resolveCoverUrl(coverPhotoUrls, coverCacheUrls, edition)} title={title} size="sm" />
                   {showCounts && count > 1 && <span className="count-badge">×{count}</span>}
                 </span>
               )}
               <div className="export-list-text">
                 <strong>{title}</strong>
                 {edition?.author && <span className="muted"> — {edition.author}</span>}
+                {showNotes && notes.length > 0 && <div className="export-list-notes">{notes.join('; ')}</div>}
               </div>
               {!showCovers && showCounts && count > 1 && <span className="count-inline">×{count}</span>}
             </li>
@@ -1515,6 +1614,22 @@ function ExportOptions({
       <p className="muted export-summary">
         {titleLine} · {rangeLabel} · {books.length} book{books.length === 1 ? '' : 's'}
       </p>
+
+      <span className="field-label">Format</span>
+      <div className="format-grid" role="radiogroup" aria-label="Export format">
+        {EXPORT_FORMATS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={format === value}
+            className={format === value ? 'active' : ''}
+            onClick={() => setFormat(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <span className="field-label">Sort books by</span>
       <div className="segmented">
@@ -1535,26 +1650,16 @@ function ExportOptions({
         ))}
       </div>
 
-      <span className="field-label">Format</span>
-      <div className="format-grid" role="radiogroup" aria-label="Export format">
-        {EXPORT_FORMATS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={format === value}
-            className={format === value ? 'active' : ''}
-            onClick={() => setFormat(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       {(format === 'image' || format === 'print') && (
         <label className="checkbox-row">
           <input type="checkbox" checked={showCovers} onChange={(e) => setShowCovers(e.target.checked)} />
           Include cover images
+        </label>
+      )}
+      {format !== 'csv' && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={showNotes} onChange={(e) => setShowNotes(e.target.checked)} />
+          Include reading notes
         </label>
       )}
       {format !== 'csv' && (

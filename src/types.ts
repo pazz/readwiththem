@@ -44,3 +44,14 @@ export interface CoverPhoto {
   editionId: string
   blob: Blob
 }
+
+// A local copy of a catalogue cover (Open Library, Google Books), fetched once
+// so it still shows offline or when that CDN is unreachable — the URL alone
+// (Edition.coverUrl) depends on the network being up every single time it's
+// displayed. Deliberately excluded from exportBackupJSON/importBackupJSON: a
+// fetched public cover is always re-fetchable from its URL, unlike a
+// CoverPhoto, so backing it up would just be bloat for nothing at risk.
+export interface CachedCover {
+  editionId: string
+  blob: Blob
+}

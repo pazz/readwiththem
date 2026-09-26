@@ -2,6 +2,7 @@
 // Swapping IndexedDB for a networked adapter later means changing this file, not the UI.
 import { db } from './db'
 import { generateId } from './id'
+import { fetchImageBlob } from './canvasImage'
 import type { Child, Edition, ReadingSession, CoverPhoto, ChangeLogEntry } from './types'
 
 async function logChange(entity: 'child' | 'edition' | 'session', entityId: string, op: 'create' | 'update' | 'delete', payload: unknown) {
@@ -40,11 +41,33 @@ export async function addEdition(edition: Omit<Edition, 'id' | 'createdAt'>): Pr
   const full: Edition = { ...edition, id: generateId(), createdAt: new Date().toISOString() }
   await db.editions.add(full)
   await logChange('edition', full.id, 'create', full)
+  // Not awaited: logging a reading shouldn't stall on a network fetch. A
+  // failure here is silent and harmless — the cover just falls back to
+  // fetching live next time it's shown, same as before this cache existed.
+  if (full.coverUrl) cacheCoverIfMissing(full.id, full.coverUrl)
   return full
 }
 
 export function listEditions(): Promise<Edition[]> {
   return db.editions.orderBy('title').toArray()
+}
+
+/**
+ * A local copy of a catalogue cover, fetched once so display no longer
+ * depends on that CDN being reachable every single time — see CachedCover.
+ * Not part of the changeLog: it's a resilience cache, not household data,
+ * and re-populating it after a restore isn't something anyone needs to see.
+ */
+export async function cacheCoverIfMissing(editionId: string, coverUrl: string): Promise<void> {
+  const existing = await db.coverCache.get(editionId)
+  if (existing) return
+  const blob = await fetchImageBlob(coverUrl)
+  if (!blob) return
+  await db.coverCache.put({ editionId, blob })
+}
+
+export function listCachedCovers() {
+  return db.coverCache.toArray()
 }
 
 export async function logReading(input: {
@@ -158,8 +181,8 @@ export async function importBackupJSON(json: string): Promise<void> {
     blob: base64ToBlob(p.base64, p.mimeType),
   }))
 
-  await db.transaction('rw', db.children, db.editions, db.sessions, db.changeLog, db.coverPhotos, async () => {
-    await Promise.all([db.children.clear(), db.editions.clear(), db.sessions.clear(), db.changeLog.clear(), db.coverPhotos.clear()])
+  await db.transaction('rw', [db.children, db.editions, db.sessions, db.changeLog, db.coverPhotos, db.coverCache], async () => {
+    await Promise.all([db.children.clear(), db.editions.clear(), db.sessions.clear(), db.changeLog.clear(), db.coverPhotos.clear(), db.coverCache.clear()])
     await Promise.all([
       db.children.bulkAdd(data.children!),
       db.editions.bulkAdd(data.editions!),
@@ -173,8 +196,8 @@ export async function importBackupJSON(json: string): Promise<void> {
 // The nuclear option, next to backup/restore in Settings — wipes every table,
 // with nothing kept and nowhere else this data lives.
 export async function resetAllData(): Promise<void> {
-  await db.transaction('rw', db.children, db.editions, db.sessions, db.changeLog, db.coverPhotos, async () => {
-    await Promise.all([db.children.clear(), db.editions.clear(), db.sessions.clear(), db.changeLog.clear(), db.coverPhotos.clear()])
+  await db.transaction('rw', [db.children, db.editions, db.sessions, db.changeLog, db.coverPhotos, db.coverCache], async () => {
+    await Promise.all([db.children.clear(), db.editions.clear(), db.sessions.clear(), db.changeLog.clear(), db.coverPhotos.clear(), db.coverCache.clear()])
   })
 }
 
