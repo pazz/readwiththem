@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { sortReadings } from '../src/bookOrder.ts'
+import { sortReadings, summariseBooks } from '../src/export/bookOrder.ts'
 
 const titles = { a: 'Stick Man', b: 'The Gruffalo', c: 'Room on the Broom' }
 const r = (editionId, date, createdAt = date) => ({ editionId, date, createdAt })
@@ -24,5 +24,16 @@ const grouped = sortReadings(readings, titleOf, 'title').map((x) => x.editionId)
 assert.strictEqual(grouped, 'cabbb', 'a book\'s readings sit together rather than interleaving')
 
 assert.notStrictEqual(sortReadings(readings, titleOf, 'recent'), readings, 'returns a copy, never sorts the caller\'s array in place')
+
+const noted = [
+  { ...r('b', '2026-09-05'), note: 'third' },
+  { ...r('a', '2026-09-01') },
+  { ...r('b', '2026-09-02'), note: 'first' },
+  { ...r('b', '2026-09-03') },
+]
+assert.deepStrictEqual(summariseBooks(noted, titleOf, 'recent'), [
+  { editionId: 'b', count: 3, notes: ['first', 'third'] },
+  { editionId: 'a', count: 1, notes: [] },
+], 'one entry per book, in the chosen order, with notes oldest first')
 
 console.log('book order checks passed')

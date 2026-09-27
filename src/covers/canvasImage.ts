@@ -1,3 +1,5 @@
+import { encodeCover } from './coverImage'
+
 // Shared by every canvas-based export (listImage.ts), and by storage.ts's
 // local cover cache — both need real, readable pixel bytes from a URL that
 // may not cooperate with CORS.
@@ -54,17 +56,13 @@ export async function loadImage(url: string): Promise<HTMLImageElement | null> {
 // Re-encodes a loaded image back into a Blob, via the same crossOrigin/proxy
 // path as loadImage — the point is a Blob that's actually readable (not the
 // zero-byte placeholder a no-cors fetch would give for an uncooperative CDN),
-// suitable for storing locally. Returns null wherever loadImage would.
+// suitable for storing locally, at cover size (see coverImage.ts). Catalogue
+// covers are professionally lit, so no brightening. Returns null wherever
+// loadImage would.
 export async function fetchImageBlob(url: string): Promise<Blob | null> {
   const img = await loadImage(url)
   if (!img) return null
-  const canvas = document.createElement('canvas')
-  canvas.width = img.naturalWidth
-  canvas.height = img.naturalHeight
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return null
-  ctx.drawImage(img, 0, 0)
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+  return encodeCover(img, img.naturalWidth, img.naturalHeight)
 }
 
 // Draws `img` into the (x, y, w, h) box, scaled and centre-cropped to fill it

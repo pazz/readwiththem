@@ -12,7 +12,10 @@
   --color-primary-contrast: var(--child-primary-contrast, #ffffff);
   --color-primary-soft: var(--child-primary-soft, #e4ede9);
   --color-danger: #a8422c;
-  --color-star: #d99a00;
+  /* Darker than a "gold" default would suggest: the lighter value read
+     nicely but only cleared 2.45:1 against the white card it's always shown
+     on, well under the 4.5:1 body-text floor — this clears 4.98:1, same hue. */
+  --color-star: #976600;
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
@@ -54,6 +57,41 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
+  /* Every count and date is a digit; fixed-width digits keep a row of
+     readings from jittering as one date shifts a "1" for a "2". */
+  font-variant-numeric: tabular-nums;
+}
+
+/* The parts of the page the app didn't draw — selection, caret, scrollbars —
+   otherwise carry whatever the browser defaults to, which belongs to no
+   design system here. */
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+}
+
+input, textarea {
+  caret-color: var(--color-primary);
+}
+
+* {
+  scrollbar-color: var(--color-border) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+  border: 2px solid var(--color-surface);
 }
 
 .app {
@@ -187,6 +225,16 @@ dialog.drawer {
   border-bottom: 1px solid var(--color-border);
   border-radius: 0;
   background: none;
+  transition: background 0.15s ease;
+}
+
+.settings-row:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+.settings-row:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .settings-row > span:first-child {
@@ -195,9 +243,6 @@ dialog.drawer {
   gap: 0.15rem;
 }
 
-/* Was `:last-child`, matched to the icon span; three of the four rows have
-   dropped their icon, leaving the text span as its own last child and pulling
-   this size onto it too. A dedicated class isn't order-dependent. */
 .settings-row-icon {
   color: var(--color-text-muted);
   font-size: 1.2rem;
@@ -245,12 +290,6 @@ dialog.drawer {
   cursor: default;
 }
 
-.csv-link {
-  align-self: flex-start;
-  margin-top: 1rem;
-  font-size: 0.85rem;
-}
-
 h3 {
   font-size: 0.95rem;
   font-weight: 700;
@@ -267,6 +306,11 @@ nav {
   bottom: 0;
   z-index: 10;
   display: flex;
+  /* Matches .app's own centred column — without this the bar spans the full
+     viewport on anything wider than a phone while the content above it stays
+     narrow, reading as two unrelated pieces of UI stacked on top of each other. */
+  max-width: 480px;
+  margin: 0 auto;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
@@ -455,6 +499,11 @@ img.cover-lg {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   padding: 0.7rem 0.8rem;
+  transition: border-color 0.15s ease;
+}
+
+.child-list li > button:first-child:hover {
+  border-color: var(--color-primary);
 }
 
 .child-list li > button.child-active {
@@ -529,8 +578,14 @@ img.cover-lg {
   background: none;
   color: var(--color-primary);
   text-decoration: underline;
+  text-underline-offset: 0.15em;
   font-size: inherit;
   font-weight: 500;
+}
+
+.link-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .link-btn.danger {
@@ -585,6 +640,21 @@ img.cover-lg {
    stretched and centre-aligned by the flex column. */
 .manual-entry .link-btn {
   align-self: flex-start;
+}
+
+.search-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-row button {
+  flex-shrink: 0;
 }
 
 .book-entry-modes {
@@ -690,6 +760,11 @@ img.cover-lg {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
+  transition: border-color 0.15s ease;
+}
+
+.format-grid button:not(.active):hover {
+  border-color: var(--color-primary);
 }
 
 .format-grid button.active {
@@ -717,6 +792,19 @@ img.cover-lg {
   padding: 0.55rem 0.3rem;
   font-size: 0.85rem;
   white-space: nowrap;
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
+  transition: background 0.15s ease;
+}
+
+.segmented button:not(.active):hover {
+  background: var(--color-surface-alt);
+}
+
+.segmented button.active {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
 }
 
 .checkbox-row {
@@ -734,30 +822,11 @@ img.cover-lg {
   accent-color: var(--color-primary);
 }
 
-.segmented button {
-  border: none;
-  border-radius: 0;
-  background: var(--color-surface);
-}
-
-.segmented button.active {
-  background: var(--color-primary);
-  color: var(--color-primary-contrast);
-}
-
-/* .print-page represents actual paper: always white/dark-text regardless of the
-   app's own light/dark theme, since that's what will physically print. */
+/* The printout is actual paper: white with dark text, whatever the app's own
+   light or dark theme. */
 .print-page {
-  margin-top: 0.7rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
   background: #ffffff;
   color: #1a1a1a;
-}
-
-.print-page.list-mode {
-  padding: 1rem;
 }
 
 .export-list {
@@ -838,16 +907,9 @@ img.cover-lg {
   .print-root {
     display: block;
   }
-  .print-root .print-page {
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
-  /* The on-screen sizes below are tuned for a narrow phone card, not a full
-     A4 sheet — reused as-is they print oversized. These are fixed pt values,
-     not scaled to how many rows there are: a longer list is more pages at
-     the same size, never smaller text to force it onto fewer. */
-  .print-root .print-page.list-mode h2 {
+  /* Fixed pt sizes for A4, not scaled to how many rows there are: a longer
+     list is more pages at the same size, never smaller text to fit fewer. */
+  .print-root .print-page h2 {
     font-size: 16pt;
     margin: 0 0 10pt;
   }
@@ -1066,22 +1128,14 @@ img.cover-lg {
 .about-footer a {
   color: inherit;
   text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
-/* Ko-fi's own cup-and-heart mark, greyed out until hover — a button styled as
-   the inline text link it replaced, opening the tip panel in place of a new tab. */
+/* Ko-fi's own cup-and-heart mark, greyed out until hover. */
 .kofi-link {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .kofi-link img {

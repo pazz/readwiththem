@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Child, Edition, ReadingSession, ChangeLogEntry, CoverPhoto, CachedCover } from './types'
+import type { Child, Edition, ReadingSession, ChangeLogEntry, CoverPhoto, CachedCover } from '../types'
 
 export class ReadWithThemDB extends Dexie {
   children!: EntityTable<Child, 'id'>

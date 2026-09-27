@@ -3,7 +3,7 @@ import { register } from 'node:module'
 
 register('./ts-extension-hook.mjs', import.meta.url)
 
-const { canvasHeight } = await import('../src/listImage.ts')
+const { canvasHeight } = await import('../src/export/listImage.ts')
 
 const rows = (n, notes = []) => Array.from({ length: n }, () => ({ notes }))
 const withCovers = { showCovers: true, showNotes: false }

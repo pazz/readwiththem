@@ -1,6 +1,6 @@
-// Open Library is the primary catalogue (plan-mandated); Google Books only fills
-// gaps — a missing result, or a missing cover — never replaces it. Amazon isn't
-// used: the plan explicitly excludes retailer/affiliate integration from scope.
+// Open Library is the primary catalogue; Google Books only fills gaps (a
+// missing result, or a missing cover) and never replaces it. No retailer or
+// affiliate catalogue, by design.
 import { searchBooks as searchOpenLibrary, lookupByISBN as lookupOpenLibraryISBN, type BookSearchResult } from './openLibrary'
 import { searchGoogleBooks, lookupByISBNGoogleBooks } from './googleBooks'
 

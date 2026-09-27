@@ -32,3 +32,32 @@ export function sortReadings<T extends Reading>(readings: T[], titleOf: (edition
     return b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
   })
 }
+
+interface NotedReading extends Reading {
+  note?: string
+}
+
+export interface BookSummary {
+  editionId: string
+  count: number
+  notes: string[]
+}
+
+/**
+ * One entry per book, not per reading, in the chosen order: a re-read shows a
+ * "×N" count instead of repeating the book. Notes accumulate oldest first, so
+ * they read as a diary whatever order the books themselves are in.
+ */
+export function summariseBooks(readings: NotedReading[], titleOf: (editionId: string) => string, order: BookOrder): BookSummary[] {
+  const books = new Map<string, BookSummary>()
+  for (const r of sortReadings(readings, titleOf, order)) {
+    if (!books.has(r.editionId)) books.set(r.editionId, { editionId: r.editionId, count: 0, notes: [] })
+  }
+  const chronological = [...readings].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
+  for (const r of chronological) {
+    const book = books.get(r.editionId)!
+    book.count += 1
+    if (r.note) book.notes.push(r.note)
+  }
+  return [...books.values()]
+}

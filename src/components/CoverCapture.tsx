@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { GUIDE_ASPECT, guideRectInDisplay, displayRectToVideoRect, type Rect } from './cropGuide'
-
-const OUTPUT_WIDTH = 600
-const OUTPUT_HEIGHT = Math.round(OUTPUT_WIDTH / GUIDE_ASPECT)
+import { guideRectInDisplay, displayRectToVideoRect, type Rect } from '../covers/cropGuide'
+import { encodeCover } from '../covers/coverImage'
 
 // Same camera lifecycle as BarcodeScanner (permission on demand, stream stopped
 // the moment a photo is taken or the view closes), but takes one still frame
@@ -52,29 +50,17 @@ export function CoverCapture({ onCapture, onClose }: { onCapture: (blob: Blob) =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const capture = () => {
+  const capture = async () => {
     const video = videoRef.current
     if (!video || !video.clientWidth || !video.clientHeight) return
     const displayRect = guideRectInDisplay(video.clientWidth, video.clientHeight)
     const videoRect = displayRectToVideoRect(displayRect, video.videoWidth, video.videoHeight, video.clientWidth, video.clientHeight)
-
-    const canvas = document.createElement('canvas')
-    // A fixed output size regardless of camera resolution, so the file stays a
-    // sensible, predictable size whatever phone this runs on.
-    canvas.width = OUTPUT_WIDTH
-    canvas.height = OUTPUT_HEIGHT
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.drawImage(video, videoRect.x, videoRect.y, videoRect.width, videoRect.height, 0, 0, canvas.width, canvas.height)
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return
-        streamRef.current?.getTracks().forEach((t) => t.stop())
-        onCapture(blob)
-      },
-      'image/jpeg',
-      0.85,
-    )
+    // Cover-sized whatever the camera resolution (see coverImage.ts), and
+    // brightened, since these are mostly taken at bedtime in a dim room.
+    const blob = await encodeCover(video, video.videoWidth, video.videoHeight, { crop: videoRect, normalise: true })
+    if (!blob) return
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    onCapture(blob)
   }
 
   return (

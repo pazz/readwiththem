@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { isValidISBN13 } from './isbn'
+import { isValidISBN13 } from '../catalogue/isbn'
 
 // BarcodeDetector is a native browser API (Chrome/Android) — used directly where
 // available. @zxing/browser is only imported as a fallback for browsers without it

@@ -1,4 +1,4 @@
-import { loadImage, drawImageCover } from './canvasImage'
+import { loadImage, drawImageCover } from '../covers/canvasImage'
 
 const WIDTH = 1000
 const PADDING = 40
@@ -36,11 +36,8 @@ function rowHeight(row: Pick<ListImageRow, 'notes'>, options: Pick<RenderOptions
   return hasNotes ? TEXT_ROW_HEIGHT + NOTES_LINE_HEIGHT : TEXT_ROW_HEIGHT
 }
 
-/**
- * There is no fixed page to fill here — a list can be any length, so the
- * canvas height just grows with the row count (and, per row, with whether it
- * carries a notes line) rather than being clamped to one A4 sheet.
- */
+// A list can be any length, so the canvas grows with its rows (and, per row,
+// with whether it carries a notes line).
 export function canvasHeight(rows: Array<Pick<ListImageRow, 'notes'>>, options: { showCovers: boolean; showNotes: boolean }): number {
   if (rows.length === 0) return HEADING_HEIGHT + TEXT_ROW_HEIGHT + PADDING
   return HEADING_HEIGHT + rows.reduce((sum, r) => sum + rowHeight(r, options), 0) + PADDING

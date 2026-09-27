@@ -65,7 +65,7 @@ function fromHsl([h, s, l]: HSL): string {
 }
 
 // t = 0 gives a, t = 1 gives b.
-export function mix(a: string, b: string, t: number): string {
+function mix(a: string, b: string, t: number): string {
   const [ra, ga, ba] = hexToRgb(a)
   const [rb, gb, bb] = hexToRgb(b)
   return rgbToHex([ra + (rb - ra) * t, ga + (gb - ga) * t, ba + (bb - ba) * t])

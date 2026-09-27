@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { guideRectInDisplay, displayRectToVideoRect, GUIDE_ASPECT } from '../src/cropGuide.ts'
+import { guideRectInDisplay, displayRectToVideoRect, GUIDE_ASPECT } from '../src/covers/cropGuide.ts'
 
 function approx(a, b, msg, eps = 1e-6) {
   assert.ok(Math.abs(a - b) < eps, `${msg}: ${a} !== ${b}`)

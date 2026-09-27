@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { isValidISBN13 } from '../src/isbn.ts'
+import { isValidISBN13 } from '../src/catalogue/isbn.ts'
 
 assert.strictEqual(isValidISBN13('9781845025038'), true, 'The Gruffalo ISBN should be valid')
 assert.strictEqual(isValidISBN13('9781845025037'), false, 'wrong check digit should fail')

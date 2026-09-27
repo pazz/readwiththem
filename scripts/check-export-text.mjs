@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { booksToMarkdown } from '../src/exportText.ts'
+import { booksToMarkdown } from '../src/export/exportText.ts'
 
 const empty = booksToMarkdown('Our books', 'All time', [], { showCounts: true, showNotes: true })
 assert.match(empty, /No readings logged/, 'an empty selection says so rather than rendering a bare heading')

@@ -1,6 +1,5 @@
-// Direct client-side call to Open Library's public search API. No bundled catalogue
-// subset, no Google Books gap-fill — skipped for the prototype, add if lookup-miss
-// rate on real households turns out to matter.
+// Open Library's public search API, called directly from the browser. The
+// primary catalogue; catalogue.ts fills its gaps from Google Books.
 export interface BookSearchResult {
   title: string
   author: string

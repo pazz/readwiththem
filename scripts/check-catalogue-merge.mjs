@@ -37,7 +37,7 @@ global.fetch = async (url) => {
   }
 }
 
-const { searchCatalogue } = await import('../src/catalogue.ts')
+const { searchCatalogue } = await import('../src/catalogue/catalogue.ts')
 
 const results = await searchCatalogue('gruffalo granny')
 

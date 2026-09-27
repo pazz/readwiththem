@@ -1,9 +1,10 @@
 // Single storage-adapter boundary: every screen calls these functions, never `db` directly.
 // Swapping IndexedDB for a networked adapter later means changing this file, not the UI.
 import { db } from './db'
-import { generateId } from './id'
-import { fetchImageBlob } from './canvasImage'
-import type { Child, Edition, ReadingSession, CoverPhoto, ChangeLogEntry } from './types'
+import { generateId } from '../lib/id'
+import { fetchImageBlob } from '../covers/canvasImage'
+import { OVERSIZED_BYTES, shrinkCover } from '../covers/coverImage'
+import type { Child, Edition, ReadingSession, CoverPhoto, ChangeLogEntry } from '../types'
 
 async function logChange(entity: 'child' | 'edition' | 'session', entityId: string, op: 'create' | 'update' | 'delete', payload: unknown) {
   await db.changeLog.add({ entity, entityId, op, timestamp: new Date().toISOString(), payload })
@@ -115,6 +116,33 @@ export async function saveCoverPhoto(editionId: string, blob: Blob): Promise<voi
   await logChange('edition', editionId, 'update', { coverPhoto: true })
 }
 
+/**
+ * Re-encodes cover images stored before the size limits in coverImage.ts, in
+ * both the photo store and the catalogue cache, so they stop weighing down
+ * storage and every backup. Idempotent: re-encoded covers fall well under the
+ * threshold, so later runs find nothing to do. Not in the changeLog: the
+ * picture is the same, only its encoding changed. Returns how many shrank.
+ */
+export async function shrinkOversizedCovers(): Promise<number> {
+  let shrunk = 0
+  for (const table of [db.coverPhotos, db.coverCache]) {
+    const oversized = (await table.toArray()).filter((c) => c.blob.size > OVERSIZED_BYTES)
+    for (const cover of oversized) {
+      try {
+        const blob = await shrinkCover(cover.blob)
+        if (blob && blob.size < cover.blob.size) {
+          await table.put({ editionId: cover.editionId, blob })
+          shrunk++
+        }
+      } catch (err) {
+        // An undecodable blob is left alone rather than lost.
+        console.warn('could not shrink cover', cover.editionId, err)
+      }
+    }
+  }
+  return shrunk
+}
+
 export function listCoverPhotos(): Promise<CoverPhoto[]> {
   return db.coverPhotos.toArray()
 }
@@ -181,8 +209,8 @@ export async function importBackupJSON(json: string): Promise<void> {
     blob: base64ToBlob(p.base64, p.mimeType),
   }))
 
-  await db.transaction('rw', [db.children, db.editions, db.sessions, db.changeLog, db.coverPhotos, db.coverCache], async () => {
-    await Promise.all([db.children.clear(), db.editions.clear(), db.sessions.clear(), db.changeLog.clear(), db.coverPhotos.clear(), db.coverCache.clear()])
+  await db.transaction('rw', db.tables, async () => {
+    await Promise.all(db.tables.map((t) => t.clear()))
     await Promise.all([
       db.children.bulkAdd(data.children!),
       db.editions.bulkAdd(data.editions!),
@@ -193,31 +221,8 @@ export async function importBackupJSON(json: string): Promise<void> {
   })
 }
 
-// The nuclear option, next to backup/restore in Settings — wipes every table,
+// The nuclear option, next to backup/restore in Settings: wipes every table,
 // with nothing kept and nowhere else this data lives.
 export async function resetAllData(): Promise<void> {
-  await db.transaction('rw', [db.children, db.editions, db.sessions, db.changeLog, db.coverPhotos, db.coverCache], async () => {
-    await Promise.all([db.children.clear(), db.editions.clear(), db.sessions.clear(), db.changeLog.clear(), db.coverPhotos.clear(), db.coverCache.clear()])
-  })
-}
-
-export function sessionsToCSV(sessions: ReadingSession[], children: Child[], editions: Edition[]): string {
-  const childById = new Map(children.map((c) => [c.id, c]))
-  const editionById = new Map(editions.map((e) => [e.id, e]))
-  const header = ['date', 'child', 'title', 'author', 'rating', 'note']
-  const rows = sessions.map((s) => [
-    s.date,
-    childById.get(s.childId)?.name ?? '',
-    editionById.get(s.editionId)?.title ?? '',
-    editionById.get(s.editionId)?.author ?? '',
-    s.rating?.toString() ?? '',
-    s.note ?? '',
-  ])
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
-  return [header, ...rows].map((row) => row.map(escape).join(',')).join('\n')
-}
-
-export async function exportSessionsCSV(): Promise<string> {
-  const [sessions, children, editions] = await Promise.all([listSessions(), listChildren(), listEditions()])
-  return sessionsToCSV(sessions, children, editions)
+  await db.transaction('rw', db.tables, () => Promise.all(db.tables.map((t) => t.clear())))
 }
