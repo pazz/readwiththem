@@ -1,0 +1,72 @@
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.1rem 1rem calc(var(--nav-height) + 1.5rem);
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+/* Bottom tab bar — the standard mobile/PWA navigation pattern: thumb-reachable,
+   frees vertical space, and reads as "app chrome" rather than a row of form
+   buttons competing with the page's own buttons. */
+nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  /* Matches .app's own centred column — without this the bar spans the full
+     viewport on anything wider than a phone while the content above it stays
+     narrow, reading as two unrelated pieces of UI stacked on top of each other. */
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: var(--nav-height);
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.4rem;
+}
+
+nav .nav-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+/* Emoji ignore `color`, so the active tab can't rely on tinting alone: it gets a
+   bar along its top edge and a tinted panel as well. */
+nav button[aria-current='true'] {
+  color: var(--color-primary);
+  font-weight: 700;
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 3px 0 var(--color-primary);
+}

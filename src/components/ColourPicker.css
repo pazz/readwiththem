@@ -1,0 +1,54 @@
+.child-colour {
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* The preset swatches and the one native picker, inside the colour panel. */
+/* Never wraps: it scrolls sideways on a phone narrow enough to need it, rather
+   than spilling onto a second row. */
+.colour-presets {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  padding: 0.2rem 0.1rem 0.4rem;
+  overflow-x: auto;
+}
+
+.colour-swatch {
+  flex-shrink: 0;
+  width: 2.3rem;
+  height: 2.3rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.colour-swatch.active {
+  border-color: var(--color-text);
+}
+
+/* Dashed, not a flat fill: reads as "pick your own" rather than a preset. */
+.colour-swatch-custom {
+  border: 2px dashed var(--color-text-muted);
+}
+
+.colour-swatch-custom::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.colour-swatch-custom::-webkit-color-swatch {
+  border: none;
+  border-radius: 999px;
+}
+
+.colour-swatch-custom::-moz-color-swatch {
+  border: none;
+  border-radius: 999px;
+}

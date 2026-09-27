@@ -8,6 +8,16 @@
     <!-- iOS ignores the manifest icons for "Add to Home Screen". -->
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <meta name="theme-color" content="#2c5f4f" />
+    <!-- Sets the light or dark theme before first paint; src/theme.ts keeps it in step. -->
+    <script>
+      try {
+        var pref = JSON.parse(localStorage.getItem('theme') || '"system"')
+        var dark = pref === 'dark' || (pref !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch (e) {
+        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

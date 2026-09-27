@@ -1,0 +1,22 @@
+.star-rating {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.star {
+  background: none;
+  border: none;
+  /* Narrow horizontally so five fit beside the date, but kept tall enough to
+     stay a comfortable tap target. */
+  padding: 0.55rem 0.06rem;
+  font-size: 1.45rem;
+  line-height: 1;
+  color: var(--color-border);
+  transition:
+    color 0.1s ease,
+    transform 0.1s ease;
+}
+
+.star.filled {
+  color: var(--color-star);
+}

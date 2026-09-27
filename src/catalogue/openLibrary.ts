@@ -5,6 +5,8 @@ export interface BookSearchResult {
   author: string
   isbn?: string
   coverUrl?: string
+  // Where the record came from; household matches carry their own.
+  source: 'openlibrary' | 'googlebooks' | 'manual'
 }
 
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {
@@ -17,6 +19,7 @@ export async function searchBooks(query: string): Promise<BookSearchResult[]> {
     author: d.author_name?.[0] ?? 'Unknown',
     isbn: d.isbn?.[0],
     coverUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : undefined,
+    source: 'openlibrary',
   }))
 }
 
@@ -32,5 +35,6 @@ export async function lookupByISBN(isbn: string): Promise<BookSearchResult | nul
     author: doc.author_name?.[0] ?? 'Unknown',
     isbn,
     coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : undefined,
+    source: 'openlibrary',
   }
 }

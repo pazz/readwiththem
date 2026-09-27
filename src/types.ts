@@ -14,7 +14,7 @@ export interface Edition {
   author: string
   coverUrl?: string
   isbn?: string
-  source: 'openlibrary' | 'manual'
+  source: 'openlibrary' | 'googlebooks' | 'manual'
   createdAt: string
 }
 

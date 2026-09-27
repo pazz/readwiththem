@@ -1,3 +1,5 @@
+import './StarRating.css'
+
 // Five stars; tapping the current rating clears it. The value is a string
 // ('' for none) so it binds like any other form field.
 export function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {

@@ -1,0 +1,124 @@
+.search-result {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  background: var(--color-surface);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.search-result:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+/* Labelled, full-width fields matching the Date/Rating row below, rather than
+   bare placeholder-only inputs at their intrinsic width. */
+.manual-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.manual-entry label {
+  display: block;
+}
+
+.manual-entry input {
+  width: 100%;
+}
+
+/* Keeps the cover-photo link left-aligned with the fields, rather than being
+   stretched and centre-aligned by the flex column. */
+.manual-entry .link-btn {
+  align-self: flex-start;
+}
+
+.search-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-row button {
+  flex-shrink: 0;
+}
+
+.book-entry-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.mode-primary {
+  font-size: 1rem;
+  padding: 1.1rem 0.5rem;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border: none;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.mode-primary span {
+  font-size: 1.3rem;
+}
+
+.cover-cascade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.7rem;
+}
+
+.cascade-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.cascade-item span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.also-read {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: -0.4rem;
+}
+
+button.search-result {
+  width: 100%;
+  text-align: left;
+  font-weight: 400;
+}

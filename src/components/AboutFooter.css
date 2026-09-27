@@ -1,0 +1,34 @@
+/* Deliberately the smallest, quietest text on the page — a courtesy mention,
+   not a call to action. */
+.about-footer {
+  font-size: 0.75rem;
+  margin: 0.6rem 0 0 !important;
+}
+
+.about-footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Ko-fi's own cup-and-heart mark, greyed out until hover. */
+.kofi-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.kofi-link img {
+  height: 1em;
+  width: auto;
+  filter: grayscale(1);
+  opacity: 0.75;
+  transition:
+    filter 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.kofi-link:hover img {
+  filter: none;
+  opacity: 1;
+}

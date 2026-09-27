@@ -67,14 +67,7 @@ export async function fetchImageBlob(url: string): Promise<Blob | null> {
 
 // Draws `img` into the (x, y, w, h) box, scaled and centre-cropped to fill it
 // completely — equivalent to CSS `object-fit: cover`.
-export function drawImageCover(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-) {
+export function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
   const scale = Math.max(w / img.width, h / img.height)
   const sw = w / scale
   const sh = h / scale

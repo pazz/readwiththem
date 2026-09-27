@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import './BookCover.css'
 
 // A cover image, or the title on a plain tile when there is none or it fails to load.
 export function BookCover({ src, title, size }: { src: string | undefined; title: string; size: 'sm' | 'lg' }) {

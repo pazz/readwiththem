@@ -1,0 +1,156 @@
+.export-summary {
+  margin: 0 0 0.8rem;
+}
+
+/* A single-select group of export formats, laid out 2x2 rather than as one
+   cramped row (unlike .segmented's 3-4 short words, "Spreadsheet" and
+   "Print / PDF" need the room). */
+.format-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.format-grid button {
+  padding: 0.6rem 0.4rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.15s ease;
+}
+
+.format-grid button:not(.active):hover {
+  border-color: var(--color-primary);
+}
+
+.format-grid button.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.export-submit {
+  width: 100%;
+  margin-top: 0.3rem;
+}
+
+/* The printout is actual paper: white with dark text, whatever the app's own
+   light or dark theme. */
+.print-page {
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.export-list {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+}
+
+.export-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e2d8;
+}
+
+.export-list-row:last-child {
+  border-bottom: none;
+}
+
+.export-list-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.export-list-notes {
+  color: #63625b;
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 0.15rem;
+}
+
+.export-list.plain .export-list-row {
+  padding: 0.35rem 0;
+}
+
+/* Count hints always print on white paper, so they don't follow the app theme. */
+.cover-with-count {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.count-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  background: var(--child-primary, #2c5f4f);
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 0 5px;
+}
+
+.count-inline {
+  color: var(--child-primary, #2c5f4f);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* Only exists while the export sheet is open, and only shows when printing. */
+.print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  /* display: none rather than visibility: hidden, so the app takes no layout
+     space and can't push the printout onto extra blank pages. */
+  body:has(> .print-root) > *:not(.print-root) {
+    display: none !important;
+  }
+  .print-root {
+    display: block;
+  }
+  /* Fixed pt sizes for A4, not scaled to how many rows there are: a longer
+     list is more pages at the same size, never smaller text to fit fewer. */
+  .print-root .print-page h2 {
+    font-size: 16pt;
+    margin: 0 0 10pt;
+  }
+  .print-root .export-list {
+    margin-top: 6pt;
+  }
+  .print-root .export-list-row {
+    padding: 5pt 0;
+    gap: 8pt;
+  }
+  .print-root .export-list-text strong {
+    font-size: 10.5pt;
+  }
+  .print-root .export-list-text .muted {
+    font-size: 9pt;
+  }
+  .print-root .export-list-notes {
+    font-size: 8.5pt;
+    margin-top: 1pt;
+  }
+  .print-root .count-inline {
+    font-size: 9pt;
+  }
+}
+
+.export-share {
+  width: 100%;
+  margin-top: 0.5rem;
+}

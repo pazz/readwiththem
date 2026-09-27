@@ -19,7 +19,7 @@ export function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcom
     try {
       await withTimeout(storage.importBackupJSON(await file.text()), 15_000, BLOCKED_TAB_HINT)
       writePref('activeChildId', null)
-      window.location.reload()
+      window.location.replace(window.location.pathname)
     } catch (err) {
       console.error('backup restore failed', err)
       setStatus('error')
@@ -33,6 +33,8 @@ export function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcom
       type="file"
       accept="application/json,.json"
       className="visually-hidden"
+      tabIndex={-1}
+      aria-hidden="true"
       onChange={(e) => {
         const file = e.target.files?.[0]
         e.target.value = ''
@@ -49,7 +51,11 @@ export function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcom
           <span>
             <strong>Restore from backup</strong>
             <span className="muted">
-              {status === 'restoring' ? 'Restoring…' : status === 'error' ? `Could not restore: ${error}` : 'Replaces everything above with a backup file.'}
+              {status === 'restoring'
+                ? 'Restoring…'
+                : status === 'error'
+                  ? `Could not restore: ${error}`
+                  : 'Replaces everything above with a backup file.'}
             </span>
           </span>
         </button>

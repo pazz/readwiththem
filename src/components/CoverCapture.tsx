@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { guideRectInDisplay, displayRectToVideoRect, type Rect } from '../covers/cropGuide'
 import { encodeCover } from '../covers/coverImage'
+import './Scanner.css'
 
 // Same camera lifecycle as BarcodeScanner (permission on demand, stream stopped
 // the moment a photo is taken or the view closes), but takes one still frame
@@ -47,7 +48,6 @@ export function CoverCapture({ onCapture, onClose }: { onCapture: (blob: Blob) =
       window.removeEventListener('resize', updateGuide)
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const capture = async () => {
@@ -66,13 +66,7 @@ export function CoverCapture({ onCapture, onClose }: { onCapture: (blob: Blob) =
   return (
     <div className="scanner">
       <div className="cover-capture-frame">
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          className="scanner-video cover-capture-video"
-          onLoadedMetadata={updateGuide}
-        />
+        <video ref={videoRef} muted playsInline className="scanner-video cover-capture-video" onLoadedMetadata={updateGuide} />
         {guide && !error && (
           <div className="cover-guide" style={{ left: guide.x, top: guide.y, width: guide.width, height: guide.height }} />
         )}
@@ -84,7 +78,9 @@ export function CoverCapture({ onCapture, onClose }: { onCapture: (blob: Blob) =
             📷 Capture
           </button>
         )}
-        <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn-secondary" onClick={onClose}>
+          Cancel
+        </button>
       </div>
     </div>
   )

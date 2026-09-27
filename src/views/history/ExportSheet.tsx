@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { Child, Edition, ReadingSession } from '../types'
-import type { CoverLookup } from '../data/useLibrary'
-import { sortReadings, summariseBooks, type BookOrder } from '../export/bookOrder'
-import { booksToMarkdown } from '../export/exportText'
-import { renderListImage } from '../export/listImage'
-import { sessionsToCSV } from '../export/csv'
-import { download, slugify } from '../lib/download'
-import { readPref, writePref } from '../lib/prefs'
-import { BookCover } from '../components/BookCover'
-
-type ExportFormat = 'text' | 'image' | 'print' | 'csv'
+import type { Child, Edition, ReadingSession } from '../../types'
+import type { CoverLookup } from '../../data/useLibrary'
+import { sortReadings, summariseBooks, type BookOrder } from '../../export/bookOrder'
+import { booksToMarkdown } from '../../export/exportText'
+import { renderListImage } from '../../export/listImage'
+import { sessionsToCSV } from '../../export/csv'
+import { download, fileFor, printAs, slugify } from '../../lib/download'
+import { usePref, type ExportFormat, type ExportOptions } from '../../lib/prefs'
+import { BookCover } from '../../components/BookCover'
+import { Segmented } from '../../components/Segmented'
+import './ExportSheet.css'
 
 const FORMATS: ReadonlyArray<[ExportFormat, string]> = [
   ['text', 'Text'],
@@ -19,19 +19,22 @@ const FORMATS: ReadonlyArray<[ExportFormat, string]> = [
   ['csv', 'Spreadsheet'],
 ]
 
-const ORDERS: ReadonlyArray<[BookOrder, string]> = [
+const ORDERS: ReadonlyArray<readonly [BookOrder, string]> = [
   ['recent', 'Last read'],
   ['count', 'Most read'],
   ['title', 'Title'],
 ]
 
-// Remembered per device, like the active child.
-function loadBookOrder(): BookOrder {
-  const saved = readPref('bookOrder')
-  return saved === 'count' || saved === 'title' ? saved : 'recent'
-}
+// The system share sheet, where the device has one (phones, mostly).
+const canShareText = typeof navigator.share === 'function'
+const canShareFile = (name: string, type: string) => canShareText && !!navigator.canShare?.({ files: [new File([], name, { type })] })
+const canShareImage = canShareFile('list.png', 'image/png')
+const canShareCSV = canShareFile('list.csv', 'text/csv')
+
+const isCancelled = (err: unknown) => err instanceof DOMException && err.name === 'AbortError'
 
 // Exports the given readings as copied text, a PNG list, a printout or a CSV.
+// The chosen format, order and options are remembered on this device.
 export function ExportSheet({
   sessions,
   children,
@@ -55,20 +58,14 @@ export function ExportSheet({
   onClose: () => void
   onExported: (message: string) => void
 }) {
-  const [format, setFormat] = useState<ExportFormat>('text')
-  const [order, setOrder] = useState<BookOrder>(loadBookOrder)
-  const [showCovers, setShowCovers] = useState(true)
-  const [showNotes, setShowNotes] = useState(true)
-  const [showCounts, setShowCounts] = useState(false)
+  const [order, setOrder] = usePref('bookOrder')
+  const [options, setOptions] = usePref('exportOptions')
+  const { format, showCovers, showNotes, showCounts } = options
+  const setOption = <K extends keyof ExportOptions>(key: K, value: ExportOptions[K]) => setOptions({ ...options, [key]: value })
   const [imageStatus, setImageStatus] = useState<'idle' | 'rendering' | 'error'>('idle')
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
-  const timer = useRef<number>()
+  const timer = useRef<number>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
-
-  const chooseOrder = (value: BookOrder) => {
-    setOrder(value)
-    writePref('bookOrder', value)
-  }
 
   const editionById = new Map(editions.map((e) => [e.id, e]))
   const titleOf = (id: string) => editionById.get(id)?.title ?? ''
@@ -83,11 +80,21 @@ export function ExportSheet({
   // Freya"; doubles as the print dialog's suggested filename.
   const fileBase = `read-with-${slugify(childName ?? 'them')}-${slugify(rangeLabel)}`
 
+  const markdown = () => booksToMarkdown(titleLine, rangeLabel, books, { showCounts, showNotes })
+
+  const renderImage = async () => {
+    const canvas = document.createElement('canvas')
+    const { failedCovers } = await renderListImage(canvas, heading, books, { showCovers, showCounts, showNotes, accent })
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) throw new Error('canvas.toBlob returned null')
+    return { blob, failedCovers }
+  }
+
   const copyText = async () => {
-    const markdown = booksToMarkdown(titleLine, rangeLabel, books, { showCounts, showNotes })
+    const text = markdown()
     window.clearTimeout(timer.current)
     try {
-      await navigator.clipboard.writeText(markdown)
+      await navigator.clipboard.writeText(text)
       setCopyStatus('copied')
       // A brief, visible "Copied ✓" before the sheet closes: the clipboard
       // write is otherwise invisible.
@@ -108,10 +115,7 @@ export function ExportSheet({
     const preview = window.open('', '_blank')
     setImageStatus('rendering')
     try {
-      const canvas = document.createElement('canvas')
-      const { failedCovers } = await renderListImage(canvas, heading, books, { showCovers, showCounts, showNotes, accent })
-      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
-      if (!blob) throw new Error('canvas.toBlob returned null')
+      const { blob, failedCovers } = await renderImage()
       const filename = `${fileBase}.png`
       download(filename, blob, 'image/png')
       if (preview) {
@@ -136,26 +140,42 @@ export function ExportSheet({
     }
   }
 
+  const csv = () => sessionsToCSV(sortReadings(sessions, titleOf, order), children, editions)
+
   const downloadCSV = () => {
     const filename = `${fileBase}.csv`
-    download(filename, sessionsToCSV(sortReadings(sessions, titleOf, order), children, editions), 'text/csv')
+    download(filename, csv(), 'text/csv')
     onExported(`Saved ${filename} to your downloads`)
     onClose()
   }
 
   const print = () => {
-    // Chrome suggests document.title as the "Save as PDF" filename, so it is
-    // swapped in for the print call. The sheet closes once the browser has
-    // taken its print snapshot, since closing unmounts the print root.
-    const previousTitle = document.title
-    document.title = fileBase
-    window.print()
+    printAs(fileBase)
+    // Closing unmounts the print root, so not before the browser has taken
+    // its print snapshot.
     window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => {
-      document.title = previousTitle
-      onClose()
-    }, 300)
+    timer.current = window.setTimeout(onClose, 300)
   }
+
+  const share = async () => {
+    try {
+      if (format === 'image') {
+        setImageStatus('rendering')
+        const { blob } = await renderImage()
+        setImageStatus('idle')
+        await navigator.share({ title: heading, files: [fileFor(`${fileBase}.png`, blob, 'image/png')] })
+      } else if (format === 'csv') {
+        await navigator.share({ title: heading, files: [fileFor(`${fileBase}.csv`, csv(), 'text/csv')] })
+      } else {
+        await navigator.share({ title: heading, text: markdown() })
+      }
+      onClose()
+    } catch (err) {
+      setImageStatus('idle')
+      if (!isCancelled(err)) console.error('share failed', err)
+    }
+  }
+  const shareable = { text: canShareText, image: canShareImage, csv: canShareCSV, print: false }[format]
 
   const run = { text: copyText, image: downloadImage, print, csv: downloadCSV }[format]
 
@@ -181,43 +201,33 @@ export function ExportSheet({
             role="radio"
             aria-checked={format === value}
             className={format === value ? 'active' : ''}
-            onClick={() => setFormat(value)}
+            onClick={() => setOption('format', value)}
           >
             {text}
           </button>
         ))}
       </div>
 
-      <span className="field-label">Sort books by</span>
-      <div className="segmented">
-        {ORDERS.map(([value, text]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={order === value}
-            className={order === value ? 'active' : ''}
-            onClick={() => chooseOrder(value)}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
+      <span className="field-label" id="export-order-label">
+        Sort books by
+      </span>
+      <Segmented labelledBy="export-order-label" value={order} onChange={setOrder} options={ORDERS} />
 
       {(format === 'image' || format === 'print') && (
         <label className="checkbox-row">
-          <input type="checkbox" checked={showCovers} onChange={(e) => setShowCovers(e.target.checked)} />
+          <input type="checkbox" checked={showCovers} onChange={(e) => setOption('showCovers', e.target.checked)} />
           Include cover images
         </label>
       )}
       {format !== 'csv' && (
         <label className="checkbox-row">
-          <input type="checkbox" checked={showNotes} onChange={(e) => setShowNotes(e.target.checked)} />
+          <input type="checkbox" checked={showNotes} onChange={(e) => setOption('showNotes', e.target.checked)} />
           Include reading notes
         </label>
       )}
       {format !== 'csv' && (
         <label className="checkbox-row">
-          <input type="checkbox" checked={showCounts} onChange={(e) => setShowCounts(e.target.checked)} />
+          <input type="checkbox" checked={showCounts} onChange={(e) => setOption('showCounts', e.target.checked)} />
           Include how often each book was read
         </label>
       )}
@@ -225,6 +235,11 @@ export function ExportSheet({
       <button className="submit-btn export-submit" onClick={run} disabled={format === 'image' && imageStatus === 'rendering'}>
         {label}
       </button>
+      {shareable && (
+        <button type="button" className="btn-secondary export-share" onClick={share} disabled={imageStatus === 'rendering'}>
+          Share…
+        </button>
+      )}
       {imageStatus === 'error' && format === 'image' && (
         <p className="muted">The image could not be generated — some covers may be unavailable.</p>
       )}

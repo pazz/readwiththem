@@ -35,5 +35,6 @@ function toBookSearchResult(item: GoogleVolume): BookSearchResult {
     isbn: isbn13,
     // Google serves cover thumbnails over http:// by default; force https to avoid mixed-content blocks.
     coverUrl: item.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:'),
+    source: 'googlebooks',
   }
 }

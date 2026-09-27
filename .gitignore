@@ -3,3 +3,5 @@ dist
 .playwright-mcp
 *.tsbuildinfo
 .vercel
+test-results
+playwright-report

@@ -4,7 +4,9 @@ import { db } from './db'
 import { generateId } from '../lib/id'
 import { fetchImageBlob } from '../covers/canvasImage'
 import { OVERSIZED_BYTES, shrinkCover } from '../covers/coverImage'
-import type { Child, Edition, ReadingSession, CoverPhoto, ChangeLogEntry } from '../types'
+import { decodePhoto, encodePhoto, parseBackup, serialiseBackup } from './backup'
+import type { ImportedReading } from '../export/csv'
+import type { Child, Edition, ReadingSession, CoverPhoto } from '../types'
 
 async function logChange(entity: 'child' | 'edition' | 'session', entityId: string, op: 'create' | 'update' | 'delete', payload: unknown) {
   await db.changeLog.add({ entity, entityId, op, timestamp: new Date().toISOString(), payload })
@@ -34,9 +36,7 @@ export async function addEdition(edition: Omit<Edition, 'id' | 'createdAt'>): Pr
     // Without an ISBN there is no key to match on, so fall back to title+author:
     // otherwise re-logging the same manual entry mints a new edition each time
     // and the same book shows up repeatedly as if it were several books.
-    const existing = await db.editions
-      .filter((e) => !e.isbn && e.title === edition.title && e.author === edition.author)
-      .first()
+    const existing = await db.editions.filter((e) => !e.isbn && e.title === edition.title && e.author === edition.author).first()
     if (existing) return existing
   }
   const full: Edition = { ...edition, id: generateId(), createdAt: new Date().toISOString() }
@@ -95,6 +95,19 @@ export async function listSessions(): Promise<ReadingSession[]> {
   return sessions.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
 }
 
+export async function updateSession(
+  id: string,
+  changes: Partial<Pick<ReadingSession, 'childId' | 'date' | 'note' | 'rating'>>,
+): Promise<void> {
+  await db.sessions.update(id, changes)
+  await logChange('session', id, 'update', changes)
+}
+
+export async function updateEdition(id: string, changes: Partial<Pick<Edition, 'title' | 'author'>>): Promise<void> {
+  await db.editions.update(id, changes)
+  await logChange('edition', id, 'update', changes)
+}
+
 export async function deleteSession(id: string): Promise<void> {
   await db.sessions.delete(id)
   await logChange('session', id, 'delete', { id })
@@ -147,19 +160,44 @@ export function listCoverPhotos(): Promise<CoverPhoto[]> {
   return db.coverPhotos.toArray()
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  const bytes = new Uint8Array(await blob.arrayBuffer())
-  let binary = ''
-  for (const byte of bytes) binary += String.fromCharCode(byte)
-  return btoa(binary)
+/**
+ * Adds readings from a spreadsheet to what is already here. Children are
+ * matched by name (a new name adds a child) and books by title and author,
+ * ignoring case; a
+ * row identical to an existing reading is skipped, so importing the same file
+ * twice changes nothing.
+ */
+export async function importReadings(rows: ImportedReading[]): Promise<{ added: number; skipped: number; newChildren: string[] }> {
+  const childByName = new Map((await listChildren()).map((c) => [c.name.toLowerCase(), c]))
+  const bookKey = (title: string, author: string) => `${title}|${author}`.toLowerCase()
+  const editionByKey = new Map((await listEditions()).map((e) => [bookKey(e.title, e.author), e]))
+  const existing = new Set((await db.sessions.toArray()).map(readingKey))
+  const newChildren: string[] = []
+  let added = 0
+  for (const row of rows) {
+    let child = childByName.get(row.child.toLowerCase())
+    if (!child) {
+      child = await addChild(row.child)
+      childByName.set(row.child.toLowerCase(), child)
+      newChildren.push(row.child)
+    }
+    const author = row.author || 'Unknown'
+    let edition = editionByKey.get(bookKey(row.title, author))
+    if (!edition) {
+      edition = await addEdition({ title: row.title, author, source: 'manual' })
+      editionByKey.set(bookKey(row.title, author), edition)
+    }
+    const reading = { childId: child.id, editionId: edition.id, date: row.date, note: row.note, rating: row.rating }
+    if (existing.has(readingKey(reading))) continue
+    existing.add(readingKey(reading))
+    await logReading(reading)
+    added++
+  }
+  return { added, skipped: rows.length - added, newChildren }
 }
 
-function base64ToBlob(base64: string, mimeType: string): Blob {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return new Blob([bytes], { type: mimeType })
-}
+const readingKey = (r: Pick<ReadingSession, 'childId' | 'editionId' | 'date' | 'note'>) =>
+  [r.childId, r.editionId, r.date, r.note ?? ''].join('|')
 
 export async function exportBackupJSON(): Promise<string> {
   const [children, editions, sessions, changeLog, coverPhotos] = await Promise.all([
@@ -169,54 +207,31 @@ export async function exportBackupJSON(): Promise<string> {
     db.changeLog.toArray(),
     db.coverPhotos.toArray(),
   ])
-  // A Blob can't survive JSON.stringify (it silently becomes "{}"), which would
-  // quietly drop every photographed cover from the one backup this app has.
-  const coverPhotosEncoded = await Promise.all(
-    coverPhotos.map(async (p) => ({ editionId: p.editionId, mimeType: p.blob.type, base64: await blobToBase64(p.blob) })),
-  )
-  return JSON.stringify(
-    { exportedAt: new Date().toISOString(), children, editions, sessions, changeLog, coverPhotos: coverPhotosEncoded },
-    null,
-    2,
-  )
+  return serialiseBackup({
+    children,
+    editions,
+    sessions,
+    changeLog,
+    coverPhotos: await Promise.all(coverPhotos.map((p) => encodePhoto(p.editionId, p.blob))),
+  })
 }
 
 /**
- * The counterpart to exportBackupJSON — restores a backup taken with it. This
- * replaces everything currently in this browser rather than merging: a merge
- * would leave behind whatever was added, or leave present whatever was
- * deleted, since the backup was taken, silently mixing two points in time.
+ * Restores a backup, replacing everything currently in this browser rather
+ * than merging: a merge would silently mix two points in time. The file is
+ * checked in full first, so a damaged one changes nothing.
  */
 export async function importBackupJSON(json: string): Promise<void> {
-  let data: {
-    children?: Child[]
-    editions?: Edition[]
-    sessions?: ReadingSession[]
-    changeLog?: ChangeLogEntry[]
-    coverPhotos?: Array<{ editionId: string; mimeType: string; base64: string }>
-  }
-  try {
-    data = JSON.parse(json)
-  } catch {
-    throw new Error('That file is not valid JSON.')
-  }
-  if (!Array.isArray(data.children) || !Array.isArray(data.editions) || !Array.isArray(data.sessions)) {
-    throw new Error('That file does not look like a Read With Them backup.')
-  }
-
-  const coverPhotos: CoverPhoto[] = (data.coverPhotos ?? []).map((p) => ({
-    editionId: p.editionId,
-    blob: base64ToBlob(p.base64, p.mimeType),
-  }))
-
+  const backup = parseBackup(json)
+  const coverPhotos: CoverPhoto[] = backup.coverPhotos.map((p) => ({ editionId: p.editionId, blob: decodePhoto(p) }))
   await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((t) => t.clear()))
     await Promise.all([
-      db.children.bulkAdd(data.children!),
-      db.editions.bulkAdd(data.editions!),
-      db.sessions.bulkAdd(data.sessions!),
-      data.changeLog?.length ? db.changeLog.bulkAdd(data.changeLog) : Promise.resolve(),
-      coverPhotos.length ? db.coverPhotos.bulkAdd(coverPhotos) : Promise.resolve(),
+      db.children.bulkAdd(backup.children),
+      db.editions.bulkAdd(backup.editions),
+      db.sessions.bulkAdd(backup.sessions),
+      db.changeLog.bulkAdd(backup.changeLog),
+      db.coverPhotos.bulkAdd(coverPhotos),
     ])
   })
 }
@@ -225,4 +240,14 @@ export async function importBackupJSON(json: string): Promise<void> {
 // with nothing kept and nowhere else this data lives.
 export async function resetAllData(): Promise<void> {
   await db.transaction('rw', db.tables, () => Promise.all(db.tables.map((t) => t.clear())))
+}
+
+/**
+ * Asks the browser not to clear this app's storage when space runs low (by
+ * default it may, and Safari does for sites not added to the home screen).
+ * Resolves to whether storage is now persistent; false where unsupported.
+ */
+export async function ensurePersistentStorage(): Promise<boolean> {
+  if (!navigator.storage?.persist) return false
+  return (await navigator.storage.persisted()) || navigator.storage.persist()
 }

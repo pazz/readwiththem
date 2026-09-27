@@ -1,0 +1,81 @@
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.8rem 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: none;
+  transition: background 0.15s ease;
+}
+
+.settings-row:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+.settings-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-row > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.settings-row-icon {
+  color: var(--color-text-muted);
+  font-size: 1.2rem;
+}
+
+.danger-row strong {
+  color: var(--color-danger);
+}
+
+/* Pinned to the bottom of the drawer, however little sits above it. */
+.settings-about {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+.settings-about p {
+  margin: 0.3rem 0 0;
+  line-height: 1.45;
+}
+
+.settings-heading {
+  margin: 1.4rem 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-field .field-label,
+.settings-field .segmented {
+  margin: 0;
+}
+
+.goal-target {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.goal-target input {
+  width: 5.5rem;
+}

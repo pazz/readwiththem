@@ -1,0 +1,47 @@
+.cover-sm {
+  width: 32px;
+  height: 48px;
+}
+
+.cover-lg {
+  width: 84px;
+  height: 126px;
+}
+
+img.cover-sm,
+img.cover-lg {
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 0.65rem;
+  text-align: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cascade-item img.cover-lg,
+.cascade-item .cover-placeholder {
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease;
+}
+
+.cascade-item:active img.cover-lg,
+.cascade-item:active .cover-placeholder {
+  transform: scale(0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cascade-item:active img.cover-lg,
+  .cascade-item:active .cover-placeholder {
+    transform: none;
+  }
+}

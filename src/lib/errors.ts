@@ -3,10 +3,7 @@
 // resolves. This turns "never" into a clear, retryable failure rather than a
 // silent, permanent spinner on whatever action triggered it.
 export function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(message)), ms)),
-  ])
+  return Promise.race([promise, new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(message)), ms))])
 }
 
 export const BLOCKED_TAB_HINT =

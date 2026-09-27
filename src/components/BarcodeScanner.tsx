@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { isValidISBN13 } from '../catalogue/isbn'
+import './Scanner.css'
 
 // BarcodeDetector is a native browser API (Chrome/Android) — used directly where
 // available. @zxing/browser is only imported as a fallback for browsers without it
@@ -7,6 +8,7 @@ import { isValidISBN13 } from '../catalogue/isbn'
 export function BarcodeScanner({ onDetect, onClose }: { onDetect: (isbn: string) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState('')
+  const detected = useEffectEvent(onDetect)
 
   useEffect(() => {
     let stopped = false
@@ -20,7 +22,7 @@ export function BarcodeScanner({ onDetect, onClose }: { onDetect: (isbn: string)
       stopZxing?.()
       if (rafId !== null) cancelAnimationFrame(rafId)
       stream?.getTracks().forEach((t) => t.stop())
-      onDetect(isbn)
+      detected(isbn)
     }
 
     const start = async () => {

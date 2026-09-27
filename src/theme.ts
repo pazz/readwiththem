@@ -36,7 +36,16 @@ function hexToRgb(hex: string): RGB {
 }
 
 function rgbToHex(rgb: RGB): string {
-  return '#' + rgb.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('')
+  return (
+    '#' +
+    rgb
+      .map((v) =>
+        Math.round(Math.min(255, Math.max(0, v)))
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  )
 }
 
 function toHsl(hex: string): HSL {
@@ -160,4 +169,20 @@ export function applyTheme(hex: string | undefined): void {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', primary)
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
   if (icon) icon.href = custom ? faviconFor(primary) : '/icons/icon-192.png'
+}
+
+const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)')
+
+// Applies the light or dark theme ("system" follows the device, live). Returns
+// a cleanup that stops following it.
+export function applyColourScheme(pref: 'system' | 'light' | 'dark'): () => void {
+  const set = () => {
+    const dark = pref === 'dark' || (pref === 'system' && systemDark().matches)
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+  }
+  set()
+  if (pref !== 'system') return () => {}
+  const query = systemDark()
+  query.addEventListener('change', set)
+  return () => query.removeEventListener('change', set)
 }

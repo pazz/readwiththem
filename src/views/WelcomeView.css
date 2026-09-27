@@ -1,0 +1,41 @@
+.welcome p {
+  line-height: 1.5;
+  margin: 0 0 0.8rem;
+}
+
+.welcome-lead {
+  font-size: 1.05rem;
+}
+
+.welcome h3 {
+  margin-top: 1.2rem;
+}
+
+.welcome-steps {
+  margin: 0 0 0.8rem;
+  padding-left: 1.3rem;
+  line-height: 1.5;
+}
+
+.welcome-steps li + li {
+  margin-top: 0.4rem;
+}
+
+.inline-icon {
+  vertical-align: -3px;
+  color: var(--color-primary);
+}
+
+.welcome-install {
+  width: 100%;
+  margin-bottom: 0.8rem;
+}
+
+.welcome-skip {
+  display: block;
+  margin: 0.4rem 0 1rem;
+}
+
+.welcome-privacy {
+  margin: 0 !important;
+}

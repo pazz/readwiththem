@@ -1,8 +1,10 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { usePanelHistory } from '../lib/navigation'
+import './Panel.css'
 
 // A native modal <dialog>: focus trapping, Escape and the top layer come free.
 // "sheet" rises from the bottom on a phone and centres on wider screens; "drawer"
-// slides in from the right.
+// slides in from the right. The back button closes it.
 export function Panel({
   open,
   onClose,
@@ -17,6 +19,7 @@ export function Panel({
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  usePanelHistory(open, onClose)
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
