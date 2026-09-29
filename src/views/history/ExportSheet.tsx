@@ -1,3 +1,4 @@
+import { LanguageBadge } from '../../components/LanguageBadge'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Child, Edition, ReadingSession } from '../../types'
@@ -72,19 +73,34 @@ export function ExportSheet({
   // Every format lists the books in the same order.
   const books = summariseBooks(sessions, titleOf, order).map(({ editionId, count, notes }) => {
     const edition = editionById.get(editionId)
-    return { editionId, title: edition?.title ?? 'Unknown book', author: edition?.author, coverUrl: coverFor(edition), count, notes }
+    return {
+      editionId,
+      title: edition?.title ?? 'Unknown book',
+      author: edition?.author,
+      language: edition?.language,
+      coverUrl: coverFor(edition),
+      count,
+      notes,
+    }
   })
+
+  // Naming each book's language only earns its place when the list mixes
+  // languages; until the person says otherwise, it follows the selection.
+  const [languageChoice, setLanguageChoice] = useState<boolean>()
+  const languagesInList = new Set(books.map((b) => b.language).filter(Boolean))
+  const showLanguage = languageChoice ?? languagesInList.size > 1
+  const listed = books.map((b) => (showLanguage ? b : { ...b, language: undefined }))
 
   const heading = `${titleLine} — ${rangeLabel}`
   // e.g. "read-with-freya-september-2026", echoing the header's "Read with
   // Freya"; doubles as the print dialog's suggested filename.
   const fileBase = `read-with-${slugify(childName ?? 'them')}-${slugify(rangeLabel)}`
 
-  const markdown = () => booksToMarkdown(titleLine, rangeLabel, books, { showCounts, showNotes })
+  const markdown = () => booksToMarkdown(titleLine, rangeLabel, listed, { showCounts, showNotes })
 
   const renderImage = async () => {
     const canvas = document.createElement('canvas')
-    const { failedCovers } = await renderListImage(canvas, heading, books, { showCovers, showCounts, showNotes, accent })
+    const { failedCovers } = await renderListImage(canvas, heading, listed, { showCovers, showCounts, showNotes, accent })
     const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) throw new Error('canvas.toBlob returned null')
     return { blob, failedCovers }
@@ -232,6 +248,13 @@ export function ExportSheet({
         </label>
       )}
 
+      {format !== 'csv' && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={showLanguage} onChange={(e) => setLanguageChoice(e.target.checked)} />
+          Include each book's language
+        </label>
+      )}
+
       <button className="submit-btn export-submit" onClick={run} disabled={format === 'image' && imageStatus === 'rendering'}>
         {label}
       </button>
@@ -252,7 +275,7 @@ export function ExportSheet({
           <div className="print-page">
             <h2>{heading}</h2>
             <ul className={`export-list${showCovers ? '' : ' plain'}`}>
-              {books.map(({ editionId, title, author, coverUrl, count, notes }) => (
+              {listed.map(({ editionId, title, author, language, coverUrl, count, notes }) => (
                 <li key={editionId} className="export-list-row">
                   {showCovers && (
                     <span className="cover-with-count">
@@ -263,6 +286,7 @@ export function ExportSheet({
                   <div className="export-list-text">
                     <strong>{title}</strong>
                     {author && <span className="muted"> — {author}</span>}
+                    <LanguageBadge code={language} />
                     {showNotes && notes.length > 0 && <div className="export-list-notes">{notes.join('; ')}</div>}
                   </div>
                   {!showCovers && showCounts && count > 1 && <span className="count-inline">×{count}</span>}

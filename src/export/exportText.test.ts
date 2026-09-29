@@ -16,6 +16,19 @@ describe('booksToMarkdown', () => {
     { showCounts: true, showNotes: true },
   )
 
+  it("marks a book's language before its count", () => {
+    const text = booksToMarkdown(
+      'Books',
+      'All time',
+      [{ title: 'Der Grüffelo', author: 'Julia Donaldson', language: 'de', notes: [], count: 2 }],
+      {
+        showCounts: true,
+        showNotes: false,
+      },
+    )
+    expect(text).toContain('- Der Grüffelo — Julia Donaldson [DE] (×2)')
+  })
+
   it('starts with a Setext heading and the period on its own line', () => {
     const lines = md.split('\n')
     expect(lines[0]).toBe("Freya's books")

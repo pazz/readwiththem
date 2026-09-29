@@ -1,3 +1,4 @@
+import { LanguageBadge } from '../../components/LanguageBadge'
 import type { Dispatch, ReactNode } from 'react'
 import type { Edition, ReadingSession } from '../../types'
 import type { CoverLookup } from '../../data/useLibrary'
@@ -59,7 +60,14 @@ export function BookPicker({
       const householdMatches = editions.filter((ed) => ed.title.toLowerCase().includes(form.query.toLowerCase()))
       const online = await searchCatalogue(form.query)
       const results = [
-        ...householdMatches.map((ed) => ({ title: ed.title, author: ed.author, isbn: ed.isbn, coverUrl: ed.coverUrl, source: ed.source })),
+        ...householdMatches.map((ed) => ({
+          title: ed.title,
+          author: ed.author,
+          isbn: ed.isbn,
+          language: ed.language,
+          coverUrl: ed.coverUrl,
+          source: ed.source,
+        })),
         ...online,
       ]
       dispatch({ type: 'searchFinished', results })
@@ -82,6 +90,7 @@ export function BookPicker({
           <BookCover src={coverPreview ?? selected.coverUrl} title={selected.title} size="sm" />
           <span>
             {selected.title} — {selected.author}
+            <LanguageBadge code={selected.language} />
           </span>
           <button type="button" onClick={onDeselect}>
             Change
@@ -138,6 +147,7 @@ export function BookPicker({
               <BookCover src={r.coverUrl} title={r.title} size="sm" />
               <span>
                 {r.title} — {r.author}
+                <LanguageBadge code={r.language} />
               </span>
             </button>
           ))}
@@ -207,7 +217,10 @@ function ReadAgain({
         {recent.map((e) => (
           <button key={e.id} type="button" className="cascade-item" onClick={() => onPick(e)}>
             <BookCover src={coverFor(e)} title={e.title} size="lg" />
-            <span>{e.title}</span>
+            <span>
+              {e.title}
+              <LanguageBadge code={e.language} />
+            </span>
           </button>
         ))}
       </div>

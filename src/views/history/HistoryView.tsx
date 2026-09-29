@@ -1,3 +1,4 @@
+import { LanguageBadge } from '../../components/LanguageBadge'
 import { useState } from 'react'
 import type { Child, Edition, ReadingSession } from '../../types'
 import type { CoverLookup } from '../../data/useLibrary'
@@ -163,6 +164,7 @@ export function HistoryView({
                       <button type="button" className="book-link" onClick={() => setOpenBookId(s.editionId)}>
                         {title}
                       </button>
+                      <LanguageBadge code={edition?.language} />
                       {edition?.author && <span className="muted"> by {edition.author}</span>}
                     </div>
                     <span className="session-row-actions">

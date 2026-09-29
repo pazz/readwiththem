@@ -1,3 +1,4 @@
+import { isLanguageCode } from '../catalogue/language'
 import type { ChangeLogEntry, Child, Edition, ReadingSession } from '../types'
 
 // The backup file format. Version 1 is the unversioned format written before
@@ -36,7 +37,7 @@ const isISODate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-
 const isRating = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5
 const isYear = (v: unknown): v is number => Number.isInteger(v)
 const isColour = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
-const SOURCES: ReadonlyArray<Edition['source']> = ['openlibrary', 'googlebooks', 'manual']
+const SOURCES: ReadonlyArray<Edition['source']> = ['openlibrary', 'googlebooks', 'inventaire', 'library', 'manual']
 
 function list(data: Json, key: string, required: boolean): unknown[] {
   const value = data[key]
@@ -86,6 +87,7 @@ export function parseBackup(json: string): Backup {
       fail('book', i, 'is incomplete')
     if (!SOURCES.includes(e.source as Edition['source'])) fail('book', i, 'has an unknown source')
     if (!optional(e.coverUrl, isText) || !optional(e.isbn, isText)) fail('book', i, 'has an invalid cover or ISBN')
+    if (!optional(e.language, isLanguageCode)) fail('book', i, 'has an invalid language')
     unique(e.id, 'book', i)
     return {
       id: e.id,
@@ -93,6 +95,7 @@ export function parseBackup(json: string): Backup {
       author: e.author,
       coverUrl: e.coverUrl,
       isbn: e.isbn,
+      language: e.language,
       source: e.source as Edition['source'],
       createdAt: e.createdAt,
     }

@@ -1,0 +1,14 @@
+.lang-badge {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0 0.4em;
+  border: 1px solid var(--color-border, currentColor);
+  border-radius: 4px;
+  font-size: 0.7em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-decoration: none;
+  vertical-align: middle;
+  color: var(--color-text-muted);
+}

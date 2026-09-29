@@ -4,7 +4,7 @@ import { encodeCover } from './coverImage'
 // local cover cache — both need real, readable pixel bytes from a URL that
 // may not cooperate with CORS.
 
-// A CORS-friendly mirror: some cover CDNs (Open Library's among them) don't
+// A CORS-friendly mirror: some cover CDNs (Inventaire's, for one) don't
 // send the Access-Control-Allow-Origin header a canvas export needs, even
 // though the very same URL loads fine as a plain <img> elsewhere in the app.
 // weserv.nl re-serves the image with that header added.

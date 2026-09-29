@@ -7,6 +7,8 @@ import { errorMessage } from '../../lib/errors'
 import { Panel } from '../../components/Panel'
 import { BookCover } from '../../components/BookCover'
 import { CoverCapture } from '../../components/CoverCapture'
+import { LanguageBadge } from '../../components/LanguageBadge'
+import { COMMON_LANGUAGES, languageName } from '../../catalogue/language'
 
 // One book: how often and when it was read, every note, and ways to correct
 // its title and author or give it a cover photo.
@@ -78,7 +80,10 @@ function BookDetails({
       <div className="book-detail">
         <BookCover src={coverFor(edition)} title={edition.title} size="lg" />
         <div>
-          <p>{edition.author}</p>
+          <p>
+            {edition.author}
+            <LanguageBadge code={edition.language} />
+          </p>
           <p className="muted">
             Read {readings.length === 1 ? 'once' : `${readings.length} times`}
             {childName ? ` with ${childName}` : ''}
@@ -116,7 +121,7 @@ function BookDetails({
 
       <div className="book-actions">
         <button type="button" className="btn-secondary" onClick={() => setMode('edit')}>
-          Edit title and author
+          Edit title, author and language
         </button>
         <button type="button" className="btn-secondary" onClick={() => setMode('photo')}>
           📷 {hasCoverPhoto ? 'Retake cover photo' : 'Add a cover photo'}
@@ -129,13 +134,18 @@ function BookDetails({
 function EditBookForm({ edition, onDone }: { edition: Edition; onDone: () => void }) {
   const [title, setTitle] = useState(edition.title)
   const [author, setAuthor] = useState(edition.author)
+  const [language, setLanguage] = useState(edition.language ?? '')
   const [error, setError] = useState('')
 
   const save = async (e: FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return setError('A book needs a title.')
     try {
-      await storage.updateEdition(edition.id, { title: title.trim(), author: author.trim() || 'Unknown' })
+      await storage.updateEdition(edition.id, {
+        title: title.trim(),
+        author: author.trim() || 'Unknown',
+        language: language || undefined,
+      })
       onDone()
     } catch (err) {
       setError(`Could not save: ${errorMessage(err)}`)
@@ -151,6 +161,17 @@ function EditBookForm({ edition, onDone }: { edition: Edition; onDone: () => voi
       <label>
         <span className="field-label">Author</span>
         <input value={author} onChange={(e) => setAuthor(e.target.value)} />
+      </label>
+      <label>
+        <span className="field-label">Language</span>
+        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+          <option value="">Not set</option>
+          {[...new Set([...(edition.language ? [edition.language] : []), ...COMMON_LANGUAGES])].map((code) => (
+            <option key={code} value={code}>
+              {languageName(code)}
+            </option>
+          ))}
+        </select>
       </label>
       <div className="book-actions">
         <button className="submit-btn" type="submit">

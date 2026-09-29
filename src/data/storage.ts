@@ -103,7 +103,7 @@ export async function updateSession(
   await logChange('session', id, 'update', changes)
 }
 
-export async function updateEdition(id: string, changes: Partial<Pick<Edition, 'title' | 'author'>>): Promise<void> {
+export async function updateEdition(id: string, changes: Partial<Pick<Edition, 'title' | 'author' | 'language'>>): Promise<void> {
   await db.editions.update(id, changes)
   await logChange('edition', id, 'update', changes)
 }
@@ -184,7 +184,7 @@ export async function importReadings(rows: ImportedReading[]): Promise<{ added: 
     const author = row.author || 'Unknown'
     let edition = editionByKey.get(bookKey(row.title, author))
     if (!edition) {
-      edition = await addEdition({ title: row.title, author, source: 'manual' })
+      edition = await addEdition({ title: row.title, author, language: row.language, source: 'manual' })
       editionByKey.set(bookKey(row.title, author), edition)
     }
     const reading = { childId: child.id, editionId: edition.id, date: row.date, note: row.note, rating: row.rating }

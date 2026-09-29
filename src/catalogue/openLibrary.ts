@@ -1,12 +1,15 @@
 // Open Library's public search API, called directly from the browser. The
 // primary catalogue; catalogue.ts fills its gaps from Google Books.
+import type { Edition } from '../types'
+
 export interface BookSearchResult {
   title: string
   author: string
   isbn?: string
   coverUrl?: string
+  language?: string
   // Where the record came from; household matches carry their own.
-  source: 'openlibrary' | 'googlebooks' | 'manual'
+  source: Edition['source']
 }
 
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {

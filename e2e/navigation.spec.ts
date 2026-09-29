@@ -34,3 +34,10 @@ test('a reload keeps the current screen', async ({ page }) => {
   await page.reload()
   await expect(page.getByText('Period')).toBeVisible()
 })
+
+test('the switch button moves to the next child and wraps round', async ({ page }) => {
+  await page.getByRole('button', { name: 'Switch child' }).click()
+  await expect(page.getByRole('heading', { name: 'Read with Arlo' })).toBeVisible()
+  await page.getByRole('button', { name: 'Switch child' }).click()
+  await expect(page.getByRole('heading', { name: 'Read with Freya' })).toBeVisible()
+})

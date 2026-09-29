@@ -1,4 +1,5 @@
 import type { BookSearchResult } from './openLibrary'
+import { languageFromCode } from './language'
 
 // Public Google Books volumes API — no key needed at this request volume.
 export async function searchGoogleBooks(query: string): Promise<BookSearchResult[]> {
@@ -24,6 +25,7 @@ interface GoogleVolume {
     authors?: string[]
     imageLinks?: { thumbnail?: string }
     industryIdentifiers?: Array<{ type: string; identifier: string }>
+    language?: string
   }
 }
 
@@ -33,6 +35,7 @@ function toBookSearchResult(item: GoogleVolume): BookSearchResult {
     title: item.volumeInfo.title,
     author: item.volumeInfo.authors?.[0] ?? 'Unknown',
     isbn: isbn13,
+    language: languageFromCode(item.volumeInfo.language),
     // Google serves cover thumbnails over http:// by default; force https to avoid mixed-content blocks.
     coverUrl: item.volumeInfo.imageLinks?.thumbnail?.replace(/^http:/, 'https:'),
     source: 'googlebooks',

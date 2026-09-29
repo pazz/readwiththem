@@ -24,6 +24,14 @@ describe('parseBackup', () => {
     expect(parseBackup(json)).toEqual(valid)
   })
 
+  it("keeps a book's language, and refuses one that is not a two-letter code", () => {
+    const german = { ...valid, editions: [{ ...edition, language: 'de' }] }
+    expect(parseBackup(serialiseBackup(german)).editions[0].language).toBe('de')
+    expect(() => parseBackup(withChange((b) => ((b.editions as Array<Record<string, unknown>>)[0].language = 'German')))).toThrow(
+      /language/,
+    )
+  })
+
   it('still restores the unversioned format, without change log or photos', () => {
     const v1 = JSON.stringify({ exportedAt: '2026-09-01', children: [child], editions: [edition], sessions: [session] })
     expect(parseBackup(v1)).toEqual(valid)

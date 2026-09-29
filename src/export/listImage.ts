@@ -15,6 +15,7 @@ const NOTES_LINE_HEIGHT = 30
 export interface ListImageRow {
   title: string
   author?: string
+  language?: string
   coverUrl?: string
   count: number
   notes: string[]
@@ -118,7 +119,8 @@ export async function renderListImage(
     ctx.font = '600 26px system-ui, sans-serif'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    const titleText = row.author ? `${row.title} — ${row.author}` : row.title
+    const byline = row.author ? `${row.title} — ${row.author}` : row.title
+    const titleText = row.language ? `${byline} [${row.language.toUpperCase()}]` : byline
     ctx.fillText(titleText, textX, titleCenter, textMaxWidth)
 
     if (options.showCounts && row.count > 1) {

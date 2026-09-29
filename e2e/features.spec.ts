@@ -21,16 +21,18 @@ test.describe('with the sample family', () => {
     await expect(page.locator('.session-row').first()).toContainText('Much less scary now')
   })
 
-  test('opens a book, and corrects its title', async ({ page }) => {
+  test('opens a book, and corrects its title and language', async ({ page }) => {
     await toHistory(page)
     await page.getByRole('button', { name: 'The Gruffalo' }).first().click()
     const sheet = page.getByRole('dialog', { name: 'The Gruffalo' })
     await expect(sheet).toContainText('Read 2 times with Freya')
     await expect(sheet).toContainText('Loved the mouse')
-    await sheet.getByRole('button', { name: 'Edit title and author' }).click()
+    await sheet.getByRole('button', { name: 'Edit title, author and language' }).click()
     await sheet.getByLabel('Title').fill('The Gruffalo (board book)')
+    await sheet.getByLabel('Language').selectOption('de')
     await sheet.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('button', { name: 'The Gruffalo (board book)' }).first()).toBeVisible()
+    await expect(page.locator('.session-row', { hasText: 'The Gruffalo (board book)' }).first().locator('.lang-badge')).toHaveText('DE')
   })
 
   test('filters History by title and shows readable dates', async ({ page }) => {

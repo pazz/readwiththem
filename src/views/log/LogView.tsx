@@ -91,6 +91,7 @@ export function LogView({
         author: book.author,
         coverUrl: book.coverUrl,
         isbn: book.isbn,
+        language: book.language,
         source: book.source,
       })
       if (coverPhoto) await storage.saveCoverPhoto(edition.id, coverPhoto)

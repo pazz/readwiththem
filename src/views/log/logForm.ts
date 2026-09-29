@@ -1,4 +1,5 @@
 import type { BookSearchResult } from '../../catalogue/catalogue'
+import { languageFromISBN } from '../../catalogue/language'
 
 export type EntryMode = 'none' | 'scan' | 'again' | 'search' | 'manual'
 
@@ -53,7 +54,14 @@ export function chosenBook(form: LogForm): BookSearchResult | null {
   if (form.selected) return form.selected
   const title = form.manual.title.trim()
   if (!title) return null
-  return { title, author: form.manual.author.trim() || 'Unknown', isbn: form.manual.isbn.trim() || undefined, source: 'manual' }
+  const isbn = form.manual.isbn.trim() || undefined
+  return {
+    title,
+    author: form.manual.author.trim() || 'Unknown',
+    isbn,
+    language: isbn ? languageFromISBN(isbn) : undefined,
+    source: 'manual',
+  }
 }
 
 export function logFormReducer(form: LogForm, action: LogFormAction): LogForm {

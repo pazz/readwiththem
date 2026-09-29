@@ -14,7 +14,9 @@ export interface Edition {
   author: string
   coverUrl?: string
   isbn?: string
-  source: 'openlibrary' | 'googlebooks' | 'manual'
+  // Two-letter ISO 639-1 code, e.g. "de"; unset when not known.
+  language?: string
+  source: 'openlibrary' | 'googlebooks' | 'inventaire' | 'library' | 'manual'
   createdAt: string
 }
 

@@ -13,6 +13,14 @@ describe('CSV', () => {
     ])
   })
 
+  it("writes the book's language and reads it back, ignoring a code that is not one", () => {
+    const german = [{ ...editions[0], language: 'de' }]
+    const csv = sessionsToCSV(sessions, children, german)
+    expect(csv.split('\n')[0]).toBe('"date","child","title","author","language","rating","note"')
+    expect(readingsFromCSV(csv)[0].language).toBe('de')
+    expect(readingsFromCSV(csv.replace('"de"', '"German"'))[0].language).toBeUndefined()
+  })
+
   it('reads back exactly what the export writes', () => {
     expect(readingsFromCSV(sessionsToCSV(sessions, children, editions))).toEqual([
       { date: '2026-09-01', child: 'Freya', title: 'Stick "Man"', author: 'Julia Donaldson', rating: 4, note: 'Loved it, again' },

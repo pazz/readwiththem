@@ -27,6 +27,13 @@ export async function stubNetwork(page: Page) {
       json: { docs: [{ title: 'Room on the Broom', author_name: ['Julia Donaldson'], cover_i: 9, isbn: ['9781405021746'] }] },
     }),
   )
+  // Inventaire finds nothing unless a test says otherwise; the national libraries are only asked about barcodes.
+  await page.route('https://inventaire.io/api/**', (r) =>
+    r.fulfill({ contentType: 'application/json', headers: cors, json: { results: [] } }),
+  )
+  await page.route(/^https:\/\/(services\.dnb\.de|catalogue\.bnf\.fr|catalogo\.bne\.es|openapi\.bnf\.fr)\//, (r) =>
+    r.fulfill({ status: 404, headers: cors, body: '' }),
+  )
   await page.route('https://www.googleapis.com/**', (r) =>
     r.fulfill({ contentType: 'application/json', headers: cors, json: { items: [] } }),
   )
@@ -97,12 +104,12 @@ export function writeBackupFile(data: unknown): string {
 }
 
 // Opens the app fresh, restores the sample backup and picks Freya: the usual starting point.
-export async function startWithSample(page: Page) {
+export async function startWithSample(page: Page, backup: unknown = sampleBackup()) {
   await stubNetwork(page)
   page.on('dialog', (d) => d.accept())
   await page.goto('/')
   await page.getByRole('button', { name: 'Continue in the browser instead' }).click()
-  await page.locator('input[type=file]').setInputFiles(writeBackupFile(sampleBackup()))
+  await page.locator('input[type=file]').setInputFiles(writeBackupFile(backup))
   await page.getByRole('button', { name: /^Freya/ }).click()
   await expect(page.getByRole('heading', { name: 'Read with Freya' })).toBeVisible()
 }

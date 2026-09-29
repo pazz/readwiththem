@@ -70,3 +70,8 @@ nav button[aria-current='true'] {
   background: var(--color-primary-soft);
   box-shadow: inset 0 3px 0 var(--color-primary);
 }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}

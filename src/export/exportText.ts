@@ -1,6 +1,7 @@
 export interface MarkdownRow {
   title: string
   author?: string
+  language?: string
   notes: string[]
   count: number
 }
@@ -27,8 +28,9 @@ export function booksToMarkdown(
   }
   for (const row of rows) {
     const authorPart = row.author ? ` — ${row.author}` : ''
+    const languagePart = row.language ? ` [${row.language.toUpperCase()}]` : ''
     const countPart = options.showCounts && row.count > 1 ? ` (×${row.count})` : ''
-    lines.push(`- ${row.title}${authorPart}${countPart}`)
+    lines.push(`- ${row.title}${authorPart}${languagePart}${countPart}`)
     if (options.showNotes) {
       for (const note of row.notes) {
         lines.push(`  - ${note}`)

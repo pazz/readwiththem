@@ -1,15 +1,17 @@
 import type { Child, Edition, ReadingSession } from '../types'
+import { isLanguageCode } from '../catalogue/language'
 
 // One row per reading, every field quoted.
 export function sessionsToCSV(sessions: ReadingSession[], children: Child[], editions: Edition[]): string {
   const childById = new Map(children.map((c) => [c.id, c]))
   const editionById = new Map(editions.map((e) => [e.id, e]))
-  const header = ['date', 'child', 'title', 'author', 'rating', 'note']
+  const header = ['date', 'child', 'title', 'author', 'language', 'rating', 'note']
   const rows = sessions.map((s) => [
     s.date,
     childById.get(s.childId)?.name ?? '',
     editionById.get(s.editionId)?.title ?? '',
     editionById.get(s.editionId)?.author ?? '',
+    editionById.get(s.editionId)?.language ?? '',
     s.rating?.toString() ?? '',
     s.note ?? '',
   ])
@@ -23,6 +25,7 @@ export interface ImportedReading {
   child: string
   title: string
   author: string
+  language?: string
   rating?: number
   note?: string
 }
@@ -61,8 +64,8 @@ export function parseCSV(text: string): string[][] {
 
 /**
  * Reads readings from a spreadsheet in the export's own layout: a header row
- * naming at least date, child and title (author, rating and note optional, in
- * any order). Throws a readable error naming the first bad row.
+ * naming at least date, child and title (author, language, rating and note
+ * optional, in any order). Throws a readable error naming the first bad row.
  */
 export function readingsFromCSV(text: string): ImportedReading[] {
   const [header, ...rows] = parseCSV(text)
@@ -83,6 +86,15 @@ export function readingsFromCSV(text: string): ImportedReading[] {
     const rating = ratingText ? Number(ratingText) : undefined
     if (rating !== undefined && !(Number.isInteger(rating) && rating >= 1 && rating <= 5))
       throw new Error(`Row ${line}: a rating must be 1 to 5.`)
-    return { date, child, title, author: cell(row, 'author'), rating, note: cell(row, 'note') || undefined }
+    const language = cell(row, 'language').toLowerCase()
+    return {
+      date,
+      child,
+      title,
+      author: cell(row, 'author'),
+      language: isLanguageCode(language) ? language : undefined,
+      rating,
+      note: cell(row, 'note') || undefined,
+    }
   })
 }
