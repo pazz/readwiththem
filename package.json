@@ -10,8 +10,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "check": "tsc -b && eslint . && prettier --check . && vitest run"
+    "test:e2e": "playwright test --project=e2e",
+    "check": "tsc -b && eslint . && prettier --check . && vitest run",
+    "setup:browser": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",

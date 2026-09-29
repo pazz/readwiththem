@@ -5,7 +5,7 @@ import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'test-results', 'playwright-report', '.claude'] },
+  { ignores: ['dist', 'dev-dist', 'test-results', 'playwright-report'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   reactHooks.configs.flat.recommended,

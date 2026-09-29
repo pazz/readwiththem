@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
 import * as storage from '../data/storage'
-import { writePref } from '../lib/prefs'
 import { withTimeout, errorMessage, BLOCKED_TAB_HINT } from '../lib/errors'
 
 // Restores a downloaded backup, from Settings or from the very first screen
 // (moving to a new device, or recovering after storage was cleared). A restore
 // replaces everything in this browser, so it asks first, then reloads the page
-// rather than resyncing every piece of React state by hand.
+// rather than resyncing every piece of React state by hand. It lands on the
+// child picker: the restored children may not include the one chosen before.
 export function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcome' }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<'idle' | 'restoring' | 'error'>('idle')
@@ -18,8 +18,7 @@ export function RestoreBackupButton({ variant }: { variant: 'settings' | 'welcom
     setError('')
     try {
       await withTimeout(storage.importBackupJSON(await file.text()), 15_000, BLOCKED_TAB_HINT)
-      writePref('activeChildId', null)
-      window.location.replace(window.location.pathname)
+      window.location.replace(`${window.location.pathname}#/children`)
     } catch (err) {
       console.error('backup restore failed', err)
       setStatus('error')
