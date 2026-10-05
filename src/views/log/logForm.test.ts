@@ -37,7 +37,7 @@ describe('logFormReducer', () => {
 describe('chosenBook', () => {
   it('prefers the selected book, then trimmed manual entry, else nothing', () => {
     expect(chosenBook({ ...start, selected: gruffalo })).toBe(gruffalo)
-    expect(chosenBook({ ...start, manual: { title: ' Home Made ', author: ' ', isbn: '' } })).toEqual({
+    expect(chosenBook({ ...start, manual: { title: ' Home Made ', author: ' ', isbn: '', language: '' } })).toEqual({
       title: 'Home Made',
       author: 'Unknown',
       isbn: undefined,

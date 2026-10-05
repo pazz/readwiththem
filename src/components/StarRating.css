@@ -1,6 +1,20 @@
 .star-rating {
   display: flex;
+  align-items: center;
+}
+
+.stars {
+  display: flex;
   gap: 0.1rem;
+}
+
+.star-clear {
+  padding: 0.55rem 0.4rem;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--color-text-muted);
 }
 
 .star {

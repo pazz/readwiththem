@@ -21,6 +21,18 @@ test.describe('with the sample family', () => {
     await expect(page.locator('.session-row').first()).toContainText('Much less scary now')
   })
 
+  test('clears the rating of a reading', async ({ page }) => {
+    await toHistory(page)
+    const row = page.locator('.session-row', { hasText: 'Scary bit' })
+    await expect(row).toContainText('★★★')
+    await row.getByRole('button', { name: 'Edit' }).click()
+    const sheet = page.getByRole('dialog', { name: 'Edit reading' })
+    await sheet.getByRole('button', { name: 'Clear rating' }).click()
+    await sheet.getByRole('button', { name: 'Save' }).click()
+    await expect(sheet).toBeHidden()
+    await expect(page.locator('.session-row', { hasText: 'Scary bit' })).not.toContainText('★')
+  })
+
   test('opens a book, and corrects its title and language', async ({ page }) => {
     await toHistory(page)
     await page.getByRole('button', { name: 'The Gruffalo' }).first().click()

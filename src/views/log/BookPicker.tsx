@@ -1,4 +1,5 @@
 import { LanguageBadge } from '../../components/LanguageBadge'
+import { COMMON_LANGUAGES, languageFromISBN, languageName } from '../../catalogue/language'
 import type { Dispatch, ReactNode } from 'react'
 import type { Edition, ReadingSession } from '../../types'
 import type { CoverLookup } from '../../data/useLibrary'
@@ -153,7 +154,8 @@ export function BookPicker({
           ))}
         </div>
       )
-    case 'manual':
+    case 'manual': {
+      const fromISBN = languageFromISBN(manual.isbn)
       return (
         <div>
           {backButton}
@@ -170,6 +172,17 @@ export function BookPicker({
               <span className="field-label">ISBN (optional)</span>
               <input value={manual.isbn} onChange={(e) => dispatch({ type: 'manual', field: 'isbn', value: e.target.value })} />
             </label>
+            <label>
+              <span className="field-label">Language (optional)</span>
+              <select value={manual.language} onChange={(e) => dispatch({ type: 'manual', field: 'language', value: e.target.value })}>
+                <option value="">{fromISBN ? `From the ISBN (${languageName(fromISBN)})` : 'Not set'}</option>
+                {COMMON_LANGUAGES.map((code) => (
+                  <option key={code} value={code}>
+                    {languageName(code)}
+                  </option>
+                ))}
+              </select>
+            </label>
             {!capturingCover && coverPreview && (
               <div className="search-result">
                 <BookCover src={coverPreview} title={manual.title || 'Cover photo'} size="sm" />
@@ -180,6 +193,7 @@ export function BookPicker({
           </div>
         </div>
       )
+    }
   }
 }
 

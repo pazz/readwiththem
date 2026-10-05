@@ -87,7 +87,7 @@ export function WelcomeView({ onContinue }: { onContinue: () => void }) {
       <p className="muted welcome-privacy">
         No account needed. Everything stays on this device; nothing about your children or books is sent anywhere.
       </p>
-      <AboutFooter />
+      <AboutFooter showSupportLink={false} />
     </div>
   )
 }

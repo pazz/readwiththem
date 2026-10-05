@@ -161,11 +161,13 @@ export function HistoryView({
                 <div className="session-row-body">
                   <div className="session-row-header">
                     <div>
+                      {/* Title, language and author are one run of text, so the line wraps
+                          wherever it has to and nowhere else. */}
                       <button type="button" className="book-link" onClick={() => setOpenBookId(s.editionId)}>
-                        {title}
+                        <span className="book-title">{title}</span>
+                        <LanguageBadge code={edition?.language} />
+                        {edition?.author && <span className="book-author"> by {edition.author}</span>}
                       </button>
-                      <LanguageBadge code={edition?.language} />
-                      {edition?.author && <span className="muted"> by {edition.author}</span>}
                     </div>
                     <span className="session-row-actions">
                       <button type="button" className="link-btn" onClick={() => setEditingId(s.id)}>

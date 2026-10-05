@@ -9,7 +9,8 @@ export interface LogForm {
   results: BookSearchResult[]
   searching: boolean
   selected: BookSearchResult | null
-  manual: { title: string; author: string; isbn: string }
+  // language '' means: take it from the ISBN, if that says.
+  manual: { title: string; author: string; isbn: string; language: string }
   date: string
   note: string
   rating: string
@@ -40,7 +41,7 @@ export function initialLogForm(date: string): LogForm {
     results: [],
     searching: false,
     selected: null,
-    manual: { title: '', author: '', isbn: '' },
+    manual: { title: '', author: '', isbn: '', language: '' },
     date,
     note: '',
     rating: '',
@@ -59,7 +60,7 @@ export function chosenBook(form: LogForm): BookSearchResult | null {
     title,
     author: form.manual.author.trim() || 'Unknown',
     isbn,
-    language: isbn ? languageFromISBN(isbn) : undefined,
+    language: form.manual.language || (isbn ? languageFromISBN(isbn) : undefined),
     source: 'manual',
   }
 }

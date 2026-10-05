@@ -83,7 +83,16 @@
 
 .book-link:hover {
   color: var(--color-primary);
+}
+
+.book-link:hover .book-title {
   text-decoration: underline;
+}
+
+.book-author {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
 }
 
 .session-row-actions {
