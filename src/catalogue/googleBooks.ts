@@ -1,20 +1,24 @@
 import type { BookSearchResult } from './openLibrary'
 import { languageFromCode } from './language'
+import { fetchWithin } from './http'
 
-// Public Google Books volumes API — no key needed at this request volume.
+// Public Google Books volumes API, without a key. Its shared keyless quota is
+// often used up (429), so it only ever fills gaps.
 export async function searchGoogleBooks(query: string): Promise<BookSearchResult[]> {
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`)
-  const data: { items?: GoogleVolume[] } = await res.json()
+  const data: { items?: GoogleVolume[] } = await fetchWithin(url, (res) => {
+    if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`)
+    return res.json()
+  })
   return (data.items ?? []).map(toBookSearchResult)
 }
 
 export async function lookupByISBNGoogleBooks(isbn: string): Promise<BookSearchResult | null> {
   const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Google Books lookup failed: ${res.status}`)
-  const data: { items?: GoogleVolume[] } = await res.json()
+  const data: { items?: GoogleVolume[] } = await fetchWithin(url, (res) => {
+    if (!res.ok) throw new Error(`Google Books lookup failed: ${res.status}`)
+    return res.json()
+  })
   const item = data.items?.[0]
   return item ? { ...toBookSearchResult(item), isbn } : null
 }

@@ -7,7 +7,7 @@ import { searchBooks as searchOpenLibrary, lookupByISBN as lookupOpenLibraryISBN
 import { searchGoogleBooks, lookupByISBNGoogleBooks } from './googleBooks'
 import { languageFromISBN, SOURCE_DEFAULT_LANGUAGE } from './language'
 import { searchInventaire } from './inventaire'
-import { bnfCoverByISBN, libraryFor, lookupNationalLibrary } from './nationalLibraries'
+import { lookupNationalLibrary } from './nationalLibraries'
 export type { BookSearchResult }
 
 function dedupeKey(r: BookSearchResult): string {
@@ -65,20 +65,23 @@ export async function searchCatalogue(query: string): Promise<BookSearchResult[]
 }
 
 export async function lookupISBN(isbn: string): Promise<BookSearchResult | null> {
-  const [national, openLibrary] = await Promise.all([
+  // All at once, each capped by fetchWithin's timeout: a scan waits for the
+  // slowest source, never for one after another.
+  const [national, openLibrary, googleBooks] = await Promise.all([
     lookupNationalLibrary(isbn).catch(() => null),
     lookupOpenLibraryISBN(isbn).catch(() => null),
+    lookupByISBNGoogleBooks(isbn).catch(() => null),
   ])
-  // The national library names the edition in its own language. Failing a
-  // record that says so, the ISBN's prefix is a good guess at the language.
-  const language = (book: BookSearchResult) => ({ ...book, language: book.language ?? languageFromISBN(isbn) })
-  const found = national ?? openLibrary
-  const knownCover = openLibrary?.coverUrl
-  if (found && knownCover) return language({ ...found, coverUrl: knownCover })
-  const googleBooks = await lookupByISBNGoogleBooks(isbn).catch(() => null)
-  if (!found) return googleBooks && language(googleBooks)
-  // Google's cover is known to exist; otherwise guess where one may be. A
-  // wrong guess falls back to the placeholder when the image fails to load.
-  const guess = libraryFor(isbn) === 'bnf' ? bnfCoverByISBN(isbn) : `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`
-  return language({ ...found, coverUrl: googleBooks?.coverUrl ?? guess })
+  // The national catalogue names the edition in its own language.
+  const found = national ?? openLibrary ?? googleBooks
+  if (!found) return null
+  // Covers known to exist come first; then ones that may (a wrong guess falls
+  // back to the placeholder when the image fails to load).
+  const coverUrl =
+    openLibrary?.coverUrl ??
+    googleBooks?.coverUrl ??
+    national?.coverUrl ??
+    `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`
+  // Failing a record that says so, the ISBN's prefix is a good guess at the language.
+  return { ...found, coverUrl, language: found.language ?? languageFromISBN(isbn) }
 }

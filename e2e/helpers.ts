@@ -31,8 +31,9 @@ export async function stubNetwork(page: Page) {
   await page.route('https://inventaire.io/api/**', (r) =>
     r.fulfill({ contentType: 'application/json', headers: cors, json: { results: [] } }),
   )
-  await page.route(/^https:\/\/(services\.dnb\.de|catalogue\.bnf\.fr|catalogo\.bne\.es|openapi\.bnf\.fr)\//, (r) =>
-    r.fulfill({ status: 404, headers: cors, body: '' }),
+  await page.route(
+    /^https:\/\/(services\.dnb\.de|catalogue\.bnf\.fr|catalogo\.bne\.es|openapi\.bnf\.fr|api\.openbd\.jp|brasilapi\.com\.br)\//,
+    (r) => r.fulfill({ status: 404, headers: cors, body: '' }),
   )
   await page.route('https://www.googleapis.com/**', (r) =>
     r.fulfill({ contentType: 'application/json', headers: cors, json: { items: [] } }),
