@@ -168,7 +168,7 @@ export function applyTheme(hex: string | undefined): void {
   const primary = custom?.light.primary ?? DEFAULT_COLOUR
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', primary)
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-  if (icon) icon.href = custom ? faviconFor(primary) : '/icons/icon-192.png'
+  if (icon) icon.href = custom ? faviconFor(primary) : `${import.meta.env.BASE_URL}icons/icon-192.png`
 }
 
 const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)')
