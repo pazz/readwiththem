@@ -4,9 +4,13 @@
   gap: 8px;
 }
 
+/* A barcode is a wide strip, so the view is too: it leaves the date and
+   rating in sight. The reader still sees the camera's whole frame; this only
+   crops what is shown. */
 .scanner-video {
   width: 100%;
-  max-height: 320px;
+  aspect-ratio: 3 / 2;
+  max-height: 200px;
   object-fit: cover;
   border-radius: var(--radius-md);
   background: black;
