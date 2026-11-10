@@ -1,3 +1,5 @@
+import { History, Share } from 'lucide-react'
+import { ICON } from '../../components/icon'
 import { LanguageBadge } from '../../components/LanguageBadge'
 import { useState } from 'react'
 import type { Child, Edition, ReadingSession } from '../../types'
@@ -61,9 +63,7 @@ export function HistoryView({
   if (sessions.length === 0) {
     return (
       <div className="card empty-state">
-        <span className="empty-icon" aria-hidden="true">
-          🕘
-        </span>
+        <History {...ICON} size={32} className="empty-icon" />
         No readings logged yet.
       </div>
     )
@@ -135,7 +135,7 @@ export function HistoryView({
             {filtered.length} reading{filtered.length === 1 ? '' : 's'} · {bookCount} book{bookCount === 1 ? '' : 's'}
           </span>
           <button type="button" className="submit-btn export-btn" onClick={() => setExportOpen(true)} disabled={filtered.length === 0}>
-            <span aria-hidden="true">↗</span> Export
+            <Share {...ICON} size={16} /> Export
           </button>
         </div>
       </div>
@@ -170,12 +170,12 @@ export function HistoryView({
                       </button>
                     </div>
                     <span className="session-row-actions">
-                      <button type="button" className="link-btn" onClick={() => setEditingId(s.id)}>
+                      <button type="button" className="link-btn quiet" onClick={() => setEditingId(s.id)}>
                         Edit
                       </button>
                       <button
                         type="button"
-                        className="link-btn danger"
+                        className="link-btn quiet danger"
                         onClick={() => {
                           if (confirm(`Remove this reading of "${title}"?`)) storage.deleteSession(s.id)
                         }}
@@ -184,12 +184,16 @@ export function HistoryView({
                       </button>
                     </span>
                   </div>
-                  <div className="muted">
-                    {formatDisplayDate(s.date)}
-                    {!activeChild && ` · ${childById.get(s.childId)?.name ?? 'Unknown child'}`}
-                    {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
+                  <div className="session-meta">
+                    <span className="date-stamp">{formatDisplayDate(s.date)}</span>
+                    {!activeChild && <span className="muted">{childById.get(s.childId)?.name ?? 'Unknown child'}</span>}
+                    {s.rating ? (
+                      <span className="session-stars" aria-label={`${s.rating} of 5 stars`}>
+                        {'★'.repeat(s.rating)}
+                      </span>
+                    ) : null}
                   </div>
-                  {s.note && <div>{s.note}</div>}
+                  {s.note && <div className="session-note">{s.note}</div>}
                 </div>
               </div>
             )

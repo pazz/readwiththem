@@ -8,35 +8,63 @@
   height: 126px;
 }
 
+/* Real covers and drawn ones share the shape of a book: a sharper spine edge
+   on the left, rounder fore-edge corners on the right. */
+img.cover-sm,
+img.cover-lg,
+.cover-placeholder {
+  border-radius: 2px 4px 4px 2px;
+  flex-shrink: 0;
+}
+
 img.cover-sm,
 img.cover-lg {
   object-fit: cover;
-  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--color-border);
 }
 
 .cover-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  border-radius: 4px;
-  padding: 4px;
-  font-size: 0.65rem;
-  text-align: center;
   overflow: hidden;
-  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-primary) 26%, var(--color-surface));
+  /* The spine: a darker band of the same colour down the left edge. */
+  box-shadow:
+    inset 4px 0 0 color-mix(in srgb, var(--color-primary) 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  color: color-mix(in srgb, var(--color-primary) 55%, var(--color-text));
+  font-family: var(--font-serif);
+  font-weight: 600;
+  text-align: center;
+}
+
+.cover-placeholder.cover-sm {
+  padding-left: 4px;
+  font-size: 1rem;
+}
+
+.cover-placeholder.cover-lg {
+  padding: 8px 6px 8px 10px;
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.cover-placeholder.cover-lg span {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cascade-item img.cover-lg,
 .cascade-item .cover-placeholder {
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.12s ease;
+  transition: transform 120ms var(--ease);
 }
 
 .cascade-item:active img.cover-lg,
 .cascade-item:active .cover-placeholder {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 @media (prefers-reduced-motion: reduce) {

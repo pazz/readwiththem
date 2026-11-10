@@ -1,3 +1,5 @@
+import { ArrowLeft, PenLine, Repeat, ScanBarcode, Search } from 'lucide-react'
+import { ICON } from '../../components/icon'
 import { LanguageBadge } from '../../components/LanguageBadge'
 import { COMMON_LANGUAGES, languageFromISBN, languageName } from '../../catalogue/language'
 import type { Dispatch, ReactNode } from 'react'
@@ -79,7 +81,7 @@ export function BookPicker({
 
   const backButton = (
     <button type="button" className="back-btn" onClick={() => dispatch({ type: 'mode', mode: 'none' })}>
-      <span aria-hidden="true">←</span> Back
+      <ArrowLeft {...ICON} size={16} /> Back
     </button>
   )
 
@@ -107,16 +109,16 @@ export function BookPicker({
       return (
         <div className="book-entry-modes">
           <button type="button" className="mode-primary" onClick={() => dispatch({ type: 'mode', mode: 'again' })}>
-            <span aria-hidden="true">🔁</span> Read again
+            <Repeat {...ICON} /> Read again
           </button>
           <button type="button" className="mode-primary" onClick={() => dispatch({ type: 'mode', mode: 'scan' })}>
-            <span aria-hidden="true">📖</span> Scan barcode
+            <ScanBarcode {...ICON} /> Scan barcode
           </button>
           <button type="button" className="mode-primary" onClick={() => dispatch({ type: 'mode', mode: 'search' })}>
-            <span aria-hidden="true">🔍</span> Search
+            <Search {...ICON} /> Search
           </button>
           <button type="button" className="mode-primary" onClick={() => dispatch({ type: 'mode', mode: 'manual' })}>
-            <span aria-hidden="true">✏️</span> Add manually
+            <PenLine {...ICON} /> Add manually
           </button>
         </div>
       )

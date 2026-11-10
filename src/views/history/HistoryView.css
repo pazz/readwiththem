@@ -1,30 +1,30 @@
 .history-filters {
-  margin-bottom: 0.9rem;
+  margin-bottom: 16px;
 }
 
 .history-filters .segmented,
 .history-filters .filter-dates {
-  margin-bottom: 0.6rem;
+  margin-bottom: 8px;
 }
 
 .history-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 8px;
 }
 
 .submit-btn.export-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
 }
 
 .filter-dates {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-  margin-bottom: 0.7rem;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .filter-dates label {
@@ -37,15 +37,15 @@
 
 .session-row {
   display: flex;
-  gap: 0.7rem;
+  gap: 12px;
   align-items: flex-start;
-  padding: 0.7rem 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
 .session-row:last-child {
   border-bottom: none;
-  padding-bottom: 0.2rem;
+  padding-bottom: 4px;
 }
 
 .session-row-body {
@@ -57,12 +57,12 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .title-filter {
   width: 100%;
-  margin-bottom: 0.6rem;
+  margin-bottom: 8px;
 }
 
 .session-row-cover {
@@ -77,20 +77,25 @@
   padding: 0;
   border: none;
   background: none;
-  font-weight: 700;
+  font-weight: 400;
   text-align: left;
 }
 
-.book-link:hover {
-  color: var(--color-primary);
+.book-title {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  font-weight: 600;
 }
 
-.book-link:hover .book-title {
-  text-decoration: underline;
+@media (hover: hover) {
+  .book-link:hover .book-title {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
 }
 
 .book-author {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 400;
   color: var(--color-text-muted);
 }
@@ -98,12 +103,12 @@
 .session-row-actions {
   display: flex;
   flex-shrink: 0;
-  gap: 0.7rem;
+  gap: 12px;
   font-size: 0.85rem;
 }
 
 .goal-card p {
-  margin: 0 0 0.5rem;
+  margin: 0 0 8px;
 }
 
 .goal-card progress {
@@ -113,42 +118,43 @@
 }
 
 .backup-reminder {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
+  background: var(--color-surface-alt);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .backup-reminder p {
-  margin: 0 0 0.7rem;
+  margin: 0 0 12px;
   line-height: 1.45;
 }
 
 .backup-reminder-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 16px;
 }
 
-.backup-reminder-actions .submit-btn {
-  padding: 0.55rem 1rem;
+.backup-reminder-actions .btn-secondary {
+  padding: 8px 16px;
 }
 
 .book-detail {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 0.8rem;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .book-detail p {
-  margin: 0 0 0.5rem;
+  margin: 0 0 8px;
   line-height: 1.45;
 }
 
 .book-notes {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin: 0 0 1rem;
+  gap: 8px;
+  margin: 0 0 16px;
   padding: 0;
   list-style: none;
 }
@@ -156,6 +162,24 @@
 .book-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.session-stars {
+  color: var(--color-star);
+  font-size: 0.8125rem;
+  letter-spacing: 1px;
+}
+
+.session-note {
+  margin-top: 4px;
 }

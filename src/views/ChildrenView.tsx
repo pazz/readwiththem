@@ -1,3 +1,5 @@
+import { Check, Users } from 'lucide-react'
+import { ICON } from '../components/icon'
 import { useState, type FormEvent } from 'react'
 import type { Child, ReadingSession } from '../types'
 import * as storage from '../data/storage'
@@ -73,9 +75,7 @@ export function ChildrenView({
       <div>
         {addForm}
         <div className="card empty-state">
-          <span className="empty-icon" aria-hidden="true">
-            🧒
-          </span>
+          <Users {...ICON} size={32} className="empty-icon" />
           Add a child above to get started.
         </div>
       </div>
@@ -94,7 +94,7 @@ export function ChildrenView({
             return (
               <li key={c.id}>
                 <button type="button" className={c.id === activeChildId ? 'child-active' : ''} onClick={() => onSelect(c.id)}>
-                  {c.id === activeChildId ? '✓ ' : ''}
+                  {c.id === activeChildId && <Check {...ICON} size={16} />}
                   {c.name}
                   {c.birthYear ? ` (b. ${c.birthYear})` : ''}
                 </button>

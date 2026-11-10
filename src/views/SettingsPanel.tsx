@@ -1,3 +1,5 @@
+import { ChevronRight } from 'lucide-react'
+import { ICON } from '../components/icon'
 import { useState } from 'react'
 import * as storage from '../data/storage'
 import { daysSinceBackup, downloadBackup } from '../data/downloadBackup'
@@ -53,9 +55,7 @@ export function SettingsPanel({
           <strong>Children</strong>
           <span className="muted">Add a child, or switch who you're logging for</span>
         </span>
-        <span className="settings-row-icon" aria-hidden="true">
-          ›
-        </span>
+        <ChevronRight {...ICON} className="settings-row-icon" />
       </button>
 
       <h3 className="settings-heading">Preferences</h3>

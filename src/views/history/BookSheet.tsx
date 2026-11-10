@@ -1,3 +1,5 @@
+import { Camera } from 'lucide-react'
+import { ICON } from '../../components/icon'
 import { useState, type FormEvent } from 'react'
 import type { Edition, ReadingSession } from '../../types'
 import type { CoverLookup } from '../../data/useLibrary'
@@ -90,15 +92,15 @@ function BookDetails({
             {first && last && first !== last ? (
               <>
                 <br />
-                First {formatDisplayDate(first.date)}
+                First <span className="date-stamp">{formatDisplayDate(first.date)}</span>
                 <br />
-                Last {formatDisplayDate(last.date)}
+                Last <span className="date-stamp">{formatDisplayDate(last.date)}</span>
               </>
             ) : (
               last && (
                 <>
                   <br />
-                  {formatDisplayDate(last.date)}
+                  <span className="date-stamp">{formatDisplayDate(last.date)}</span>
                 </>
               )
             )}
@@ -112,7 +114,7 @@ function BookDetails({
           <ul className="book-notes">
             {notes.map((r) => (
               <li key={r.id}>
-                <span className="muted">{formatDisplayDate(r.date)}</span> {r.note}
+                <span className="date-stamp">{formatDisplayDate(r.date)}</span> {r.note}
               </li>
             ))}
           </ul>
@@ -124,7 +126,7 @@ function BookDetails({
           Edit title, author and language
         </button>
         <button type="button" className="btn-secondary" onClick={() => setMode('photo')}>
-          📷 {hasCoverPhoto ? 'Retake cover photo' : 'Add a cover photo'}
+          <Camera {...ICON} /> {hasCoverPhoto ? 'Retake cover photo' : 'Add a cover photo'}
         </button>
       </div>
     </>

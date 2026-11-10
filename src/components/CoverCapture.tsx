@@ -1,3 +1,5 @@
+import { Camera } from 'lucide-react'
+import { ICON } from './icon'
 import { useEffect, useRef, useState } from 'react'
 import { guideRectInDisplay, displayRectToVideoRect, type Rect } from '../covers/cropGuide'
 import { encodeCover } from '../covers/coverImage'
@@ -75,7 +77,7 @@ export function CoverCapture({ onCapture, onClose }: { onCapture: (blob: Blob) =
       <div style={{ display: 'flex', gap: '0.4rem' }}>
         {!error && (
           <button type="button" className="submit-btn" onClick={capture} disabled={!ready}>
-            📷 Capture
+            <Camera {...ICON} /> Capture
           </button>
         )}
         <button type="button" className="btn-secondary" onClick={onClose}>

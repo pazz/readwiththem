@@ -1,4 +1,5 @@
 // Global styles first, so component styles (imported by each component) follow them.
+import '@fontsource-variable/newsreader'
 import './styles/tokens.css'
 import './styles/base.css'
 import { StrictMode } from 'react'

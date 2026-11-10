@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+import { ICON } from './icon'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { usePanelHistory } from '../lib/navigation'
 import './Panel.css'
@@ -44,7 +46,7 @@ export function Panel({
           <div className="panel-header">
             <h2>{title}</h2>
             <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
-              ✕
+              <X {...ICON} />
             </button>
           </div>
           {children}

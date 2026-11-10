@@ -1,11 +1,11 @@
 .search-result {
   display: flex;
-  gap: 0.6rem;
+  gap: 8px;
   align-items: center;
-  padding: 0.6rem;
+  padding: 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  margin-bottom: 0.4rem;
+  margin-bottom: 8px;
   cursor: pointer;
   background: var(--color-surface);
   transition:
@@ -13,9 +13,10 @@
     background 0.15s ease;
 }
 
-.search-result:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
+@media (hover: hover) {
+  .search-result:hover {
+    background: var(--color-surface-alt);
+  }
 }
 
 /* Labelled, full-width fields matching the Date/Rating row below, rather than
@@ -23,7 +24,7 @@
 .manual-entry {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 12px;
 }
 
 .manual-entry label {
@@ -42,8 +43,8 @@
 
 .search-row {
   display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .search-row input {
@@ -58,47 +59,53 @@
 .book-entry-modes {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+  gap: 8px;
 }
 
 .mode-primary {
-  font-size: 1rem;
-  padding: 1.1rem 0.5rem;
-  background: var(--color-primary);
-  color: var(--color-primary-contrast);
-  border: none;
-  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  box-shadow: var(--shadow-sm);
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
 }
 
-.mode-primary:hover {
-  background: var(--color-primary-hover);
+.mode-primary svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 
-.mode-primary span {
-  font-size: 1.3rem;
+@media (hover: hover) {
+  .mode-primary:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface);
+  }
 }
 
 .cover-cascade {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 0.8rem;
-  margin-top: 0.7rem;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .cascade-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
+  gap: 4px;
   background: none;
   border: none;
   padding: 0;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-text);
   text-align: center;
 }
 
@@ -113,8 +120,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: -0.4rem;
+  gap: 8px;
+  margin-top: -8px;
 }
 
 button.search-result {

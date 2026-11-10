@@ -24,7 +24,7 @@ dialog.sheet {
   max-height: 88dvh;
   margin: auto 0 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  animation: sheet-up 0.22s ease-out;
+  animation: sheet-up 320ms var(--ease);
 }
 
 dialog.drawer {
@@ -34,7 +34,7 @@ dialog.drawer {
   max-height: none;
   margin: 0 0 0 auto;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  animation: drawer-in 0.22s ease-out;
+  animation: drawer-in 320ms var(--ease);
 }
 
 @keyframes sheet-up {
@@ -60,18 +60,21 @@ dialog.drawer {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  padding: 0.6rem 1rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+  padding: 8px 16px calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.4rem;
+  margin-bottom: 8px;
 }
 
 .panel-header h2 {
-  font-size: 1.15rem;
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 500;
+  line-height: 1.2;
   margin: 0;
 }
 

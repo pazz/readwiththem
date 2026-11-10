@@ -1,24 +1,24 @@
 .welcome p {
   line-height: 1.5;
-  margin: 0 0 0.8rem;
+  margin: 0 0 12px;
 }
 
 .welcome-lead {
-  font-size: 1.05rem;
+  font-size: 1.0625rem;
 }
 
 .welcome h3 {
-  margin-top: 1.2rem;
+  margin-top: 20px;
 }
 
 .welcome-steps {
-  margin: 0 0 0.8rem;
-  padding-left: 1.3rem;
+  margin: 0 0 12px;
+  padding-left: 20px;
   line-height: 1.5;
 }
 
 .welcome-steps li + li {
-  margin-top: 0.4rem;
+  margin-top: 8px;
 }
 
 .inline-icon {
@@ -28,12 +28,12 @@
 
 .welcome-install {
   width: 100%;
-  margin-bottom: 0.8rem;
+  margin-bottom: 12px;
 }
 
 .welcome-skip {
   display: block;
-  margin: 0.4rem 0 1rem;
+  margin: 8px 0 16px;
 }
 
 .welcome-privacy {

@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+import { ICON } from './icon'
 import './StarRating.css'
 
 // Five stars; tapping the current rating, or the cross beside them, clears it.
@@ -29,7 +31,7 @@ export function StarRating({ value, onChange }: { value: string; onChange: (v: s
         style={{ visibility: current ? 'visible' : 'hidden' }}
         onClick={() => onChange('')}
       >
-        ✕
+        <X {...ICON} size={16} />
       </button>
     </div>
   )

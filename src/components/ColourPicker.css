@@ -14,8 +14,8 @@
 .colour-presets {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.5rem;
-  padding: 0.2rem 0.1rem 0.4rem;
+  gap: 8px;
+  padding: 4px 2px 8px;
   overflow-x: auto;
 }
 

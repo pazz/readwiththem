@@ -1,10 +1,14 @@
+/* A warm paper ramp: the page is a quiet surface and the book covers carry
+   the colour. Hairlines are the text colour at low opacity, not a fixed grey,
+   so they sit right on every surface. */
 :root {
-  --color-bg: #f6f3ec;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f0ece2;
-  --color-border: #e3ddd0;
-  --color-text: #1c1c1a;
-  --color-text-muted: #63625b;
+  --color-bg: #f7f4ee;
+  --color-surface: #fdfbf7;
+  --color-surface-alt: #efe9df;
+  --color-border: rgba(31, 27, 22, 0.1);
+  --color-border-strong: rgba(31, 27, 22, 0.18);
+  --color-text: #1f1b16;
+  --color-text-muted: #6b6257;
   /* The accent follows the active child's colour when one is set (see
      src/theme.ts, which sets the --child-* variables); these are the defaults. */
   --color-primary: var(--child-primary, #2c5f4f);
@@ -16,11 +20,17 @@
      nicely but only cleared 2.45:1 against the white card it's always shown
      on, well under the 4.5:1 body-text floor — this clears 4.98:1, same hue. */
   --color-star: #976600;
+  --radius-xs: 4px;
   --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --shadow-sm: 0 1px 2px rgba(20, 20, 15, 0.06), 0 1px 1px rgba(20, 20, 15, 0.04);
-  --shadow-md: 0 4px 16px rgba(20, 20, 15, 0.08), 0 1px 3px rgba(20, 20, 15, 0.06);
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.05);
+  --shadow-md: 0 8px 24px rgba(31, 27, 22, 0.08);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Book titles and the page title: a book face, bundled so it works offline. */
+  --font-serif: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --nav-height: 64px;
   color-scheme: light;
 }
@@ -28,19 +38,21 @@
 /* data-theme is set before first paint (index.html) and kept in step with the
    theme setting and the system preference (src/theme.ts). */
 :root[data-theme='dark'] {
-  --color-bg: #14161a;
-  --color-surface: #1f2226;
-  --color-surface-alt: #262a2f;
-  --color-border: #34383e;
-  --color-text: #f0efe9;
-  --color-text-muted: #a3a299;
+  --color-bg: #161513;
+  --color-surface: #1c1a18;
+  --color-surface-alt: #262421;
+  --color-border: rgba(239, 233, 222, 0.09);
+  --color-border-strong: rgba(239, 233, 222, 0.18);
+  --color-text: #efe9de;
+  --color-text-muted: #aaa398;
   --color-primary: var(--child-primary-dark, #57a98c);
   --color-primary-hover: var(--child-primary-hover-dark, #6cbb9f);
   --color-primary-contrast: var(--child-primary-contrast-dark, #0c130f);
   --color-primary-soft: var(--child-primary-soft-dark, #22322c);
   --color-danger: #d97a63;
   --color-star: #e8b647;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.24);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  /* On dark surfaces depth comes from surface steps and hairlines. */
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }

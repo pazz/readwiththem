@@ -12,6 +12,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // The bundled book face too, so titles keep their type offline.
+      workbox: { globPatterns: ['**/*.{js,css,html,woff2,png,svg}'] },
       manifest: {
         name: 'Read With Them',
         short_name: 'ReadWithThem',

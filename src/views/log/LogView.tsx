@@ -1,3 +1,5 @@
+import { BookOpen, Camera } from 'lucide-react'
+import { ICON } from '../../components/icon'
 import { useReducer, useRef, useState, type FormEvent } from 'react'
 import type { Child, Edition, ReadingSession } from '../../types'
 import type { CoverLookup } from '../../data/useLibrary'
@@ -41,9 +43,7 @@ export function LogView({
   if (!activeChild) {
     return (
       <div className="card empty-state">
-        <span className="empty-icon" aria-hidden="true">
-          📖
-        </span>
+        <BookOpen {...ICON} size={32} className="empty-icon" />
         <p className="muted">No child selected yet.</p>
         <button className="submit-btn" onClick={onChooseChild}>
           Choose or add a child
@@ -114,7 +114,7 @@ export function LogView({
     />
   ) : (
     <button type="button" className="link-btn" onClick={() => setCapturingCover(true)}>
-      📷 {coverPhoto ? 'Retake cover photo' : 'Add a cover photo'}
+      <Camera {...ICON} /> {coverPhoto ? 'Retake cover photo' : 'Add a cover photo'}
     </button>
   )
 

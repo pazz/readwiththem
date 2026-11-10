@@ -14,10 +14,10 @@ export function BackupReminder({ readingCount }: { readingCount: number }) {
         them safe if the phone is lost or the browser is cleared.
       </p>
       <div className="backup-reminder-actions">
-        <button type="button" className="submit-btn" onClick={downloadBackup}>
+        <button type="button" className="btn-secondary" onClick={downloadBackup}>
           Download backup
         </button>
-        <button type="button" className="link-btn" onClick={() => snoozeBackupReminder()}>
+        <button type="button" className="link-btn quiet" onClick={() => snoozeBackupReminder()}>
           Remind me later
         </button>
       </div>

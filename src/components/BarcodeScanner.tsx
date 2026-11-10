@@ -1,3 +1,5 @@
+import { ArrowLeft } from 'lucide-react'
+import { ICON } from './icon'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { isValidISBN13 } from '../catalogue/isbn'
 import './Scanner.css'
@@ -88,7 +90,7 @@ export function BarcodeScanner({ onDetect, onClose }: { onDetect: (isbn: string)
   return (
     <div className="scanner">
       <button type="button" className="back-btn" onClick={onClose}>
-        <span aria-hidden="true">←</span> Back
+        <ArrowLeft {...ICON} size={16} /> Back
       </button>
       <video ref={videoRef} muted playsInline className="scanner-video" />
       {error && <p className="muted">{error}</p>}
