@@ -15,7 +15,7 @@ export const DEFAULT_COLOUR = '#2c5f4f'
 // reading as a bright picker-app rainbow. "Forest" is the untouched default.
 export const PRESET_COLOURS: Array<{ name: string; hex: string }> = [
   { name: 'Forest', hex: DEFAULT_COLOUR },
-  { name: 'Ink blue', hex: '#34497a' },
+  { name: 'Terracotta', hex: '#a8422c' },
   { name: 'Dusty blue', hex: '#3d6b85' },
   { name: 'Plum', hex: '#6b4c6e' },
   { name: 'Mustard', hex: '#a67c2e' },
