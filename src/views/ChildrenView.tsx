@@ -103,12 +103,12 @@ export function ChildrenView({
                   childName={c.name}
                   onChange={(colour) => storage.updateChild(c.id, { colour })}
                 />
-                <button type="button" className="link-btn child-edit" onClick={() => setEditingId(c.id)}>
+                <button type="button" className="link-btn quiet child-edit" onClick={() => setEditingId(c.id)}>
                   Edit
                 </button>
                 <button
                   type="button"
-                  className="link-btn danger child-remove"
+                  className="link-btn quiet danger child-remove"
                   onClick={() => {
                     const warning =
                       readingCount > 0 ? ` This also removes ${readingCount} reading${readingCount === 1 ? '' : 's'} logged for them.` : ''

@@ -1,21 +1,21 @@
-/* A warm paper ramp: the page is a quiet surface and the book covers carry
-   the colour. Hairlines are the text colour at low opacity, not a fixed grey,
-   so they sit right on every surface. */
+/* A neutral ramp, barely tinted: the page is a quiet surface and the book
+   covers carry the colour. Hairlines are the text colour at low opacity, not
+   a fixed grey, so they sit right on every surface. */
 :root {
-  --color-bg: #f7f4ee;
-  --color-surface: #fdfbf7;
-  --color-surface-alt: #efe9df;
-  --color-border: rgba(31, 27, 22, 0.1);
-  --color-border-strong: rgba(31, 27, 22, 0.18);
-  --color-text: #1f1b16;
-  --color-text-muted: #6b6257;
+  --color-bg: #f6f6f5;
+  --color-surface: #ffffff;
+  --color-surface-alt: #efefee;
+  --color-border: rgba(23, 23, 23, 0.09);
+  --color-border-strong: rgba(23, 23, 23, 0.17);
+  --color-text: #18181b;
+  --color-text-muted: #63636b;
   /* The accent follows the active child's colour when one is set (see
      src/theme.ts, which sets the --child-* variables); these are the defaults. */
   --color-primary: var(--child-primary, #2c5f4f);
   --color-primary-hover: var(--child-primary-hover, #234c40);
   --color-primary-contrast: var(--child-primary-contrast, #ffffff);
   --color-primary-soft: var(--child-primary-soft, #e4ede9);
-  --color-danger: #a8422c;
+  --color-danger: #c42b2b;
   /* Darker than a "gold" default would suggest: the lighter value read
      nicely but only cleared 2.45:1 against the white card it's always shown
      on, well under the 4.5:1 body-text floor — this clears 4.98:1, same hue. */
@@ -24,8 +24,8 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.05);
-  --shadow-md: 0 8px 24px rgba(31, 27, 22, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Book titles and the page title: a book face, bundled so it works offline. */
   --font-serif: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
@@ -38,18 +38,18 @@
 /* data-theme is set before first paint (index.html) and kept in step with the
    theme setting and the system preference (src/theme.ts). */
 :root[data-theme='dark'] {
-  --color-bg: #161513;
-  --color-surface: #1c1a18;
-  --color-surface-alt: #262421;
-  --color-border: rgba(239, 233, 222, 0.09);
-  --color-border-strong: rgba(239, 233, 222, 0.18);
-  --color-text: #efe9de;
-  --color-text-muted: #aaa398;
+  --color-bg: #141415;
+  --color-surface: #1b1b1d;
+  --color-surface-alt: #252527;
+  --color-border: rgba(237, 237, 237, 0.09);
+  --color-border-strong: rgba(237, 237, 237, 0.17);
+  --color-text: #ededed;
+  --color-text-muted: #a1a1a6;
   --color-primary: var(--child-primary-dark, #57a98c);
   --color-primary-hover: var(--child-primary-hover-dark, #6cbb9f);
   --color-primary-contrast: var(--child-primary-contrast-dark, #0c130f);
   --color-primary-soft: var(--child-primary-soft-dark, #22322c);
-  --color-danger: #d97a63;
+  --color-danger: #e5484d;
   --color-star: #e8b647;
   /* On dark surfaces depth comes from surface steps and hairlines. */
   --shadow-sm: none;

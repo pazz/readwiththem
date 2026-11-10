@@ -73,7 +73,7 @@ export async function renderListImage(
   ctx.fillText(heading, PADDING, PADDING + HEADING_FONT)
 
   if (rows.length === 0) {
-    ctx.fillStyle = '#63625b'
+    ctx.fillStyle = '#63636b'
     ctx.font = '400 24px system-ui, sans-serif'
     ctx.fillText('No readings logged for this selection.', PADDING, HEADING_HEIGHT + 30)
     return { failedCovers: 0 }
@@ -102,7 +102,7 @@ export async function renderListImage(
       if (img) {
         drawImageCover(ctx, img, PADDING, y, COVER_W, COVER_H)
       } else {
-        ctx.fillStyle = '#eeeae0'
+        ctx.fillStyle = '#efefee'
         ctx.fillRect(PADDING, y, COVER_W, COVER_H)
       }
     }
@@ -131,7 +131,7 @@ export async function renderListImage(
     }
 
     if (hasNotes) {
-      ctx.fillStyle = '#63625b'
+      ctx.fillStyle = '#63636b'
       ctx.font = '400 20px system-ui, sans-serif'
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
@@ -139,7 +139,7 @@ export async function renderListImage(
       ctx.fillText(row.notes.join('; '), textX, notesCenter, textMaxWidth)
     }
 
-    ctx.strokeStyle = '#e5e2d8'
+    ctx.strokeStyle = '#e4e4e7'
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(PADDING, y + thisRowHeight - ROW_GAP / 2)

@@ -15,7 +15,7 @@ export const DEFAULT_COLOUR = '#2c5f4f'
 // reading as a bright picker-app rainbow. "Forest" is the untouched default.
 export const PRESET_COLOURS: Array<{ name: string; hex: string }> = [
   { name: 'Forest', hex: DEFAULT_COLOUR },
-  { name: 'Terracotta', hex: '#a8422c' },
+  { name: 'Ink blue', hex: '#34497a' },
   { name: 'Dusty blue', hex: '#3d6b85' },
   { name: 'Plum', hex: '#6b4c6e' },
   { name: 'Mustard', hex: '#a67c2e' },
@@ -123,8 +123,8 @@ export interface Accent {
 // is the least favourable background the accent appears on as text (the
 // alternate surface), the soft tint is the active tab behind accent text.
 const MODES = {
-  light: { towards: '#000000', ref: '#f0ece2', tintBase: '#ffffff', tint: 0.12, text: '#ffffff' },
-  dark: { towards: '#ffffff', ref: '#262a2f', tintBase: '#1f2226', tint: 0.22, text: '#0c130f' },
+  light: { towards: '#000000', ref: '#efefee', tintBase: '#ffffff', tint: 0.12, text: '#ffffff' },
+  dark: { towards: '#ffffff', ref: '#252527', tintBase: '#1b1b1d', tint: 0.22, text: '#0c130f' },
 } as const
 
 function accentFor(rawHex: string, mode: keyof typeof MODES): Accent {
@@ -144,7 +144,7 @@ export function childTheme(hex: string): { light: Accent; dark: Accent } {
 }
 
 function faviconFor(hex: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="${hex}"/><g fill="#fdfaf5"><path d="M256 140c-30-24-76-36-120-36v268c44 0 90 12 120 36 30-24 76-36 120-36V104c-44 0-90 12-120 36z"/><path d="M256 176v220" stroke="${hex}" stroke-width="10"/></g></svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="${hex}"/><g fill="#ffffff"><path d="M256 140c-30-24-76-36-120-36v268c44 0 90 12 120 36 30-24 76-36 120-36V104c-44 0-90 12-120 36z"/><path d="M256 176v220" stroke="${hex}" stroke-width="10"/></g></svg>`
   return 'data:image/svg+xml,' + encodeURIComponent(svg)
 }
 

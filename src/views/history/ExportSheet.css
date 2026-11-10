@@ -56,7 +56,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 0;
-  border-bottom: 1px solid #e5e2d8;
+  border-bottom: 1px solid #e4e4e7;
 }
 
 .export-list-row:last-child {
@@ -69,7 +69,7 @@
 }
 
 .export-list-notes {
-  color: #63625b;
+  color: #63636b;
   font-size: 0.8rem;
   font-style: italic;
   margin-top: 2px;

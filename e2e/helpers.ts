@@ -3,9 +3,9 @@ import { writeFileSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// A 2x3 brown PNG, standing in for every cover image.
+// A 2x3 grey PNG, standing in for every cover image.
 export const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAIAAAA2iEnWAAAAFElEQVR4nGOcVhHFwMDAxMDAgKAAG0gBbglfL4oAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAIAAAA2iEnWAAAAEElEQVR4nGPYsmUHEDGgUACF3QzBAAPa7gAAAABJRU5ErkJggg==',
   'base64',
 )
 

@@ -17,10 +17,10 @@ describe('childTheme', () => {
     (hex) => {
       const { light, dark } = childTheme(hex)
       expect(contrast(light.primary, light.contrast)).toBeGreaterThanOrEqual(4.5)
-      expect(contrast(light.primary, '#f0ece2')).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(light.primary, '#efefee')).toBeGreaterThanOrEqual(4.5)
       expect(contrast(light.primary, light.soft)).toBeGreaterThanOrEqual(4.5)
       expect(contrast(dark.primary, dark.contrast)).toBeGreaterThanOrEqual(4.5)
-      expect(contrast(dark.primary, '#262a2f')).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(dark.primary, '#252527')).toBeGreaterThanOrEqual(4.5)
       expect(contrast(dark.primary, dark.soft)).toBeGreaterThanOrEqual(4.5)
     },
   )
